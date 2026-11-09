@@ -10,8 +10,8 @@ The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/not
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
 
-This fork now builds with Visual Studio 2022. Easy light/dark switching and
-Notepad++ XML theme imports are planned features, not implemented additions.
+This fork now builds with Visual Studio 2022. Native Light/Dark editor themes
+are planned features, not implemented additions.
 See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
 The bundled editor engine is Scintilla 3.7.6 (LongTerm3), with the original
