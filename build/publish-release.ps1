@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$Tag, [Parameter(Mandatory)][string]$PackageDirectory)
 $ErrorActionPreference = 'Stop'
-function Gh([string[]]$Arguments) {
+function Invoke-Gh([string[]]$Arguments) {
     $result = & gh @Arguments
     if ($LASTEXITCODE -ne 0) { throw "GitHub command failed: $($Arguments[0])" }
     return $result
@@ -43,14 +43,14 @@ $existing = & gh release view $Tag --json isDraft 2>$null
 if ($LASTEXITCODE -eq 0) {
     if (-not ($existing | ConvertFrom-Json).isDraft) { throw 'Published releases are immutable; use a new tag.' }
 } else {
-    $null = Gh @('release','create',$Tag,'--verify-tag','--draft','--title',"Notepad2-mod $Tag",'--notes-file',$notes)
+    $null = Invoke-Gh @('release','create',$Tag,'--verify-tag','--draft','--title',"Notepad2-mod $Tag",'--notes-file',$notes)
 }
-$null = Gh (@('release','upload',$Tag) + @($packages) + @($sums,'--clobber'))
-$assets = (Gh @('release','view',$Tag,'--json','assets') | ConvertFrom-Json).assets
+$null = Invoke-Gh (@('release','upload',$Tag) + @($packages) + @($sums,'--clobber'))
+$assets = (Invoke-Gh @('release','view',$Tag,'--json','assets') | ConvertFrom-Json).assets
 foreach ($path in @($packages) + @($sums)) {
     $asset = @($assets | Where-Object name -eq ([IO.Path]::GetFileName($path)))
     if ($asset.Count -ne 1 -or $asset[0].size -ne (Get-Item $path).Length) { throw 'Release asset verification failed.' }
 }
 $flags = if ($prerelease) { @('--prerelease','--latest=false') } else { @('--prerelease=false','--latest') }
-$null = Gh (@('release','edit',$Tag,'--draft=false','--notes-file',$notes) + $flags)
+$null = Invoke-Gh (@('release','edit',$Tag,'--draft=false','--notes-file',$notes) + $flags)
 Write-Output "Published $Tag"
