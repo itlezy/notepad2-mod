@@ -181,3 +181,33 @@ Use `--configuration Debug` for the corresponding native helper runtime. A
 pre-fix binary can be checked with `-m pytest tests/test_save_prompts.py
 --legacy-save-behavior --executable <path>` to reproduce the nine loss paths.
 These tests do not replace visual review or establish large-file performance.
+
+## Performance baseline
+
+Run the manual Python benchmark separately from normal tests. It uses pywinauto
+and psutil as test-only tools; no instrumentation runs inside the editor.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r tests/benchmark-requirements.txt
+.\.venv\Scripts\python.exe tests/benchmark_editor.py --baseline <previous-release-exe> --candidate <candidate-exe> --output bin/performance/session/results.json
+```
+
+Use published x64 executables on the same machine and avoid other benchmarks or
+desktop interaction while it runs. It displays generated plain-text documents
+in a fixed viewport, with isolated settings and no clipboard access. Large-file
+confirmation is disabled only in those temporary settings. Existing installations,
+user documents, preferences and associations are untouched.
+
+The default seven runs follow a discarded warmup for each mode/workload and rotate
+the order of baseline Original, candidate Original, and candidate Dark. Workloads
+are 128 KiB text, 25 MiB text, and a 1 MiB single line. Results include raw samples,
+medians, spread, executable/workload hashes and machine details. Metrics cover
+loading, initial repaint, literal search, 100 edit/undo pairs, 40 scroll/repaint
+moves, process memory and a one-second idle CPU sample. The single-line workload
+can take several minutes. Use a fresh output directory; generated fixtures remain
+beside the report as build artifacts.
+
+This measures warm-cache command/paint timings including automation overhead.
+It does not establish cold-start, syntax-heavy or physical typing latency.
+Occlusion, display scaling, scanner activity and machine load affect results;
+there is deliberately no automatic performance pass/fail threshold.
