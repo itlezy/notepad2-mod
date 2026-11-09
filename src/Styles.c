@@ -2634,8 +2634,7 @@ static void Theme_Capture(void)
       if (darkTheme) {
         Theme_Filter(active,themeStyles[n].dark,TRUE);
         Theme_Filter(themeStyles[n].original,colors,TRUE);
-        Theme_Compose(value,active,colors);
-        lstrcpy(themeStyles[n].original,value);
+        if (Theme_Compose(value,active,colors)) lstrcpy(themeStyles[n].original,value);
       } else lstrcpy(themeStyles[n].original,active);
     }
   }
@@ -2675,7 +2674,7 @@ static LPCWSTR Theme_DefaultColor(PEDITSTYLE style,int lex,int index)
     };
     return global[index % 12];
   }
-  if (index == 0) return L"fore:#D4D4D4; back:#1E1E1E";
+  if (index == 0) return L""; // Inherit the global theme default.
   if (StrStrI(name,L"error") || StrStrI(name,L"unknown")) return L"fore:#F48771";
   if (StrStrI(name,L"comment")) return L"fore:#85B875";
   if (StrStrI(name,L"string") || StrStrI(name,L"character")) return L"fore:#D69D85";
@@ -2713,6 +2712,17 @@ static void Theme_Load(BOOL selected)
       lstrcpy(themeStyles[n].original,style->szValue);
       IniSectionGetString(data,style->pszName,Theme_DefaultColor(style,lex,i),value,COUNTOF(value));
       Theme_Filter(value,themeStyles[n].dark,TRUE);
+      // A damaged saved color must not restore a light system background.
+      {
+        int color;
+        if ((StrStrI(themeStyles[n].dark,L"fore:") && !Style_StrGetColor(TRUE,themeStyles[n].dark,&color)) ||
+            (StrStrI(themeStyles[n].dark,L"back:") && !Style_StrGetColor(FALSE,themeStyles[n].dark,&color)))
+          lstrcpy(themeStyles[n].dark,Theme_DefaultColor(style,lex,i));
+        if (lex == 0 && i % 12 == 0) {
+          if (!Style_StrGetColor(TRUE,themeStyles[n].dark,&color)) Theme_Append(themeStyles[n].dark,L"fore:#D4D4D4");
+          if (!Style_StrGetColor(FALSE,themeStyles[n].dark,&color)) Theme_Append(themeStyles[n].dark,L"back:#1E1E1E");
+        }
+      }
     }
   }
   LocalFree(data);
@@ -2735,6 +2745,7 @@ void Style_SetTheme(HWND hwnd,BOOL dark)
   }
   Style_SetLexer(hwnd,pLexCurrent);
   SendMessage(hwnd,SCI_MARKERSETBACK,0,Style_GetBookmarkColor());
+  SendMessage(hwnd,SCI_MARKERSETALPHA,0,darkTheme ? 60 : 20);
   // Refresh the existing occurrence indicator without repeating its search.
   {
     extern int iMarkOccurrences;
