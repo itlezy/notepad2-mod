@@ -31,13 +31,17 @@ $notes = Join-Path $PackageDirectory 'release-notes.txt'
 @"
 Native Original/Dark editor palettes on Scintilla 3.7.6, with a VS 2022 build.
 
+Focused corrections protect nonempty untitled documents during save prompting, skip empty recent-file slots, make application source encoding deterministic, and honor elevated-launch show-state flags.
+
+With no selection, Ctrl+C / Ctrl+Insert copy the current line and Ctrl+X / Shift+Delete cut it. Ctrl+V / Shift+Insert paste line-marked clipboard content above the current line. Normal selected-text behavior is retained.
+
 Choose View > Editor Theme > Dark. Existing Original colors and font preferences are retained. Application chrome is unchanged.
 
 Download the portable ZIP for your architecture and extract it into a writable folder. Preserve your existing Notepad2.ini when upgrading. These binaries are unsigned. SHA256SUMS.txt provides archive integrity checks.
 
 Source commit: $commit
 Executable version: $version
-Validation: Release/Debug x86/x64 builds and native theme integration tests, including all 38 schemes and customization/persistence checks.
+Validation: Release/Debug x86/x64 builds with pytest and pywinauto, including all 38 schemes, customization/persistence, save-prompt data preservation, line shortcuts, and native helper contracts. Actual standard-user UAC interaction remains a manual check.
 "@ | Set-Content $notes -Encoding utf8
 $existing = & gh release view $Tag --json isDraft 2>$null
 if ($LASTEXITCODE -eq 0) {
