@@ -78,9 +78,15 @@ function Open-Customization {
         $null = [ThemeTestNative]::EnumWindows($callback, [IntPtr]::Zero)
     }
     Assert ($script:dialog -ne [IntPtr]::Zero) 'Customize Schemes dialog missing'
-    $tree = [ThemeTestNative]::GetDlgItem($script:dialog, 100)
-    $root = [ThemeTestNative]::SendMessage($tree, 0x110A, [IntPtr]::Zero, [IntPtr]::Zero)
-    $first = [ThemeTestNative]::SendMessage($tree, 0x110A, [IntPtr]4, $root)
+    # Window enumeration can see the dialog before WM_INITDIALOG populates it.
+    $first = [IntPtr]::Zero
+    for ($attempt = 0; $attempt -lt 500 -and $first -eq [IntPtr]::Zero; ++$attempt) {
+        $tree = [ThemeTestNative]::GetDlgItem($script:dialog, 100)
+        $root = [ThemeTestNative]::SendMessage($tree, 0x110A, [IntPtr]::Zero, [IntPtr]::Zero)
+        if ($root -ne [IntPtr]::Zero) { $first = [ThemeTestNative]::SendMessage($tree, 0x110A, [IntPtr]4, $root) }
+        if ($first -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 20 }
+    }
+    Assert ($first -ne [IntPtr]::Zero) 'Customize Schemes tree was not populated'
     $null = [ThemeTestNative]::SendMessage($tree, 0x110B, [IntPtr]9, $first)
 }
 
