@@ -29,6 +29,36 @@ packages portable x86/x64 ZIPs with source metadata and checksums. Version tags
 publish releases after required checks pass; RC tags publish prereleases.
 Legacy installer/signing scripts remain outside the portable release workflow.
 
+The focused fixes and line clipboard shortcuts are published in
+[v4.2.25.1040-rc.1](https://github.com/itlezy/notepad2-mod/releases/tag/v4.2.25.1040-rc.1).
+Hosted CI passes all four configurations with pytest/pywinauto; both downloaded
+release executables passed the full 94-test suite after checksum verification.
+
+## Performance reference
+
+The manual paired benchmark uses generated documents and isolated settings,
+with no application instrumentation. See [#14](https://github.com/itlezy/notepad2-mod/issues/14),
+the README reproduction command, and
+[raw results](tests/baselines/published-1029-vs-1040.json).
+
+Published x64 releases 1029 and 1040 were compared using seven measured runs
+after warmup, rotated mode order, and a fixed viewport. Median loading times in
+milliseconds (previous Original / current Original / current Dark):
+
+| Plain-text workload | Previous Original | Current Original | Current Dark |
+| --- | --- | --- | --- |
+| 128 KiB | 58.5 | 59.0 | 59.8 |
+| 25 MiB | 350.0 | 349.0 | 349.4 |
+| 1 MiB single line | 121.3 | 121.5 | 121.8 |
+
+Private memory is close across releases and sampled idle CPU medians are zero.
+The extreme single-line case remains expensive: 100 edit/undo pairs took roughly
+10.9 / 11.2 / 11.2 seconds. Its 40-move scroll/repaint median increased from
+276.1 ms to 349.5 ms in current Original and 357.1 ms in Dark; this is an open
+investigation, not an established root cause or approval for engine changes.
+The data includes desktop/automation overhead and is not a cold-start,
+syntax-heavy, physical input latency, or universal performance guarantee.
+
 ## Easy light/dark switching
 
 Track implementation in [#6: native Light/Dark editor themes](https://github.com/itlezy/notepad2-mod/issues/6).
