@@ -32,7 +32,9 @@ function Select-Theme($dark) {
 }
 function Start-Editor($ini, $document, $scheme = 'cpp') {
     $script:app = Start-Process -FilePath $Executable -ArgumentList @('/n', '/f', ('"'+$ini+'"'), '/s', $scheme, ('"'+$document+'"')) -WindowStyle Hidden -PassThru
-    Assert ($script:app.WaitForInputIdle(10000)) 'Editor startup timed out'
+    # Hosted Windows runners can stall process initialization under scanner/load.
+    # Keep assertions strict, but allow a bounded CI startup window.
+    Assert ($script:app.WaitForInputIdle(60000)) "Editor startup timed out after 60s: $Executable (PID $($script:app.Id))"
     $script:window = [IntPtr]::Zero
     $script:editor = [IntPtr]::Zero
     $processId = $script:app.Id
