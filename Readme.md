@@ -16,14 +16,26 @@ The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/not
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
 
-This fork now builds with Visual Studio 2022. Native Light/Dark editor themes
-are planned features, not implemented additions.
+This fork builds with Visual Studio 2022 and includes native Original/Dark editor
+palettes. Choose **View > Editor Theme > Original / Dark**. Original preserves
+existing custom colors; Dark supplies syntax and editor colors across all 38 schemes.
 Theme work covers the editor only; application chrome is out of scope.
 See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
 The bundled editor engine is Scintilla 3.7.6 (LongTerm3), with the original
 Notepad2-mod customizations preserved. See its
 [vendor notes](scintilla/README.notepad2-mod.txt) for the source and local changes.
+
+Customize the active palette using **View > Customize Schemes**. Colors are kept
+separately for Original and Dark; fonts and other non-color preferences remain
+shared. Preview, Cancel, and Reset work with the active palette. The existing
+second-default scheme toggle remains independent. Theme selection follows the
+existing Save Settings preference; explicit Save Settings also saves it.
+
+There are no external theme files or automatic system-theme synchronization.
+Scintilla's native autocomplete list and the existing bookmark pixmap retain
+their original appearance. Scheme import/export remains an explicit full-scheme
+operation, including file associations; it is not used to switch themes.
 
 ## Changes compared to the official Notepad2:
 
@@ -102,3 +114,17 @@ Release and Debug builds for x86 and x64 have been verified locally with Visual
 Studio 2022 17.14, MSVC 14.44, and Windows SDK 10.0.26100.0. Legacy packaging and
 signing scripts are separate from this build command and have not been validated.
 GitHub Actions and fork releases remain future work.
+
+To run the native theme integration checks against a built executable:
+
+```powershell
+.\build\test-themes.ps1
+.\build\test-themes.ps1 -Executable .\bin\VS2022\Release_x86\Notepad2.exe
+```
+
+The checks launch isolated instances with temporary settings, exercise all 38
+schemes and customization Preview/Cancel/Reset, and verify palette/font separation,
+switching, restart persistence, invalid defaults, and disabled settings saving.
+Use `-BaselineExecutable <path>` for a seven-run small-file startup/private-memory/
+numeric edit/idle comparison. These checks do not replace visual contrast review
+or establish large-file performance.

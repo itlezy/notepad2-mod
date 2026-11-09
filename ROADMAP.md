@@ -31,15 +31,20 @@ after runtime validation.
 ## Easy light/dark switching
 
 Track implementation in [#6: native Light/Dark editor themes](https://github.com/itlezy/notepad2-mod/issues/6).
-Start with complete global/editor and language palettes on Scintilla 3.7.6, using
-the existing native style model. Preserve language selection, font preferences,
-file associations, document contents, selection, and undo history. Persist the
-theme and validate repeated switching, restart, and readable highlights.
+Original/Dark palettes are implemented on Scintilla 3.7.6 using the existing native
+style model. Original retains legacy settings; Dark has separate color storage
+with shared typography. All 38 schemes, repeated switching, restart persistence,
+disabled settings saving, and customization Preview/Cancel/Reset are covered by
+native integration checks in Release/Debug x86/x64. Visual contrast review remains
+useful across real documents; the checks do not establish large-file performance.
 
-Start with the smallest useful editor-theme change using the existing styles
-and configuration. Keep theme switching outside the per-character editing path
-and avoid new background work or dependencies. Measure any affected startup,
-editing, memory, or idle behavior against the current fork.
+Theme state is resolved when loading/switching, outside the per-character editing
+path. No dependencies, background work, external theme loading, or vendor changes
+were added. A seven-run x64 small-file comparison during implementation measured
+median startup at 71.8 ms baseline / 73.1 ms Original / 71.7 ms Dark, with about
+236 KiB additional private memory. Numeric edit-loop times were 30.2 / 31.2 / 29.6
+ms per 100 delete/undo pairs; sampled 200 ms idle CPU deltas were zero. These are
+indicative local measurements, not a guarantee of equivalent performance on all files.
 
 Only the editor is in scope: text and syntax colors, margins, caret, selections,
 folding, bookmarks, and occurrence highlights. Application chrome (menus, dialogs,
