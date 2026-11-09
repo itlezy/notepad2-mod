@@ -34,8 +34,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Get-Content bin/build.log -Tail 80; exit 1 }
       - name: Test editor themes
         run: |
-          ./build/test-themes.ps1 -Executable './bin/VS2022/${{ matrix.configuration }}_${{ matrix.architecture }}/Notepad2.exe' *> bin/tests.log
-          if ($LASTEXITCODE -ne 0) { Get-Content bin/tests.log -Tail 80; exit 1 }
+          try {
+            ./build/test-themes.ps1 -Executable './bin/VS2022/${{ matrix.configuration }}_${{ matrix.architecture }}/Notepad2.exe' *> bin/tests.log
+          } catch {
+            Get-Content bin/tests.log -Tail 80
+            throw
+          }
           Get-Content bin/tests.log
       - name: Package portable release
         if: matrix.configuration == 'Release'
