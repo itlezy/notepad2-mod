@@ -1,5 +1,16 @@
 # Repository working rules
 
+- Product direction: stay as close to Notepad2-mod as practical. Preserve its
+  fast startup, responsive editing, small footprint, native UI, and simple deployment.
+  Evolve through minimal, focused patches; do not rebase onto Notepad3/Notepad4
+  or adopt their feature stacks or theme frameworks.
+- Prefer the existing native style/configuration model. Each dependency bump,
+  abstraction, background task, or feature expansion needs a concrete benefit
+  that justifies its maintenance and performance cost. Latest-version parity
+  is not a goal. Keep Scintilla at 3.7.6 unless a specific need is established.
+- For runtime changes, assess startup, editing responsiveness, memory, and idle
+  work where affected. Compare against the current fork; never assume a patch
+  is faster or claim a regression without measurements.
 - Finish each logical change with a granular commit after relevant validation.
   Do not ask again whether to commit completed, authorized work. Stage explicit
   paths/hunks and inspect the staged diff. Keep dependency updates, build changes,

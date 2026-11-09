@@ -5,6 +5,17 @@ The original upstream is archived; this fork owns its ongoing maintenance.
 
 ## Keep changes focused
 
+Preserve the Notepad2-mod experience: fast startup, responsive editing, a small
+footprint, native controls, and simple deployment. Prefer a small patch to the
+existing code over a new framework or subsystem. Notepad3/Notepad4 are not migration
+targets or feature-stack templates for this fork. Dependency updates require a
+specific benefit rather than version parity.
+
+For runtime changes, describe the expected maintenance and performance impact.
+Measure startup, memory, editing latency, or idle work when the change affects
+them, using the current fork as the baseline. Report measurements and limitations;
+do not assume small code changes are automatically cheap at runtime.
+
 * Use a short-lived branch for each fix or feature and open a pull request against `master`.
 * Prefer small, reviewable changes. Discuss broad refactors, dependency upgrades,
   and compatibility changes before combining them with feature work.

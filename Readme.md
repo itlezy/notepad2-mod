@@ -6,6 +6,12 @@ This fork is maintained by [itlezy](https://github.com/itlezy) at
 [itlezy/notepad2-mod](https://github.com/itlezy/notepad2-mod), with a focus on small,
 practical improvements to the original editor.
 
+The product direction is to stay close to Notepad2-mod: fast startup, responsive
+editing, a small footprint, and simple native Windows behavior. Changes should be
+minimal, focused patches with a clear benefit. This fork will not move to
+Notepad3/Notepad4 or adopt their feature stacks; matching newer editors or
+dependency versions is not a goal.
+
 The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/notepad2-mod),
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
