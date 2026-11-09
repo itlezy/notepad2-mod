@@ -12,6 +12,9 @@ minimal, focused patches with a clear benefit. This fork will not move to
 Notepad3/Notepad4 or adopt their feature stacks; matching newer editors or
 dependency versions is not a goal.
 
+The interface remains single-document. Multi-tab editing and Notepad++ parity
+are out of scope; isolated fixes from other editors may be evaluated surgically.
+
 The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/notepad2-mod),
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
@@ -79,6 +82,12 @@ Compatibility with other Windows versions has not been verified.
 * [Code folding usage guide](https://github.com/XhmikosR/notepad2-mod/wiki/Code-Folding-Usage)
 
 ## Changed keyboard shortcuts compared to Notepad2:
+
+With no selection, **Ctrl+C / Ctrl+Insert** copy the current line and
+**Ctrl+X / Shift+Delete** cut it. These line operations include a line-ending and
+use Scintilla's existing line-clipboard marker: **Ctrl+V / Shift+Insert** insert
+the line above the caret's current line. With a selection, normal copy/cut/paste
+behavior is retained. Cutting is undoable and respects read-only documents.
 
 * <kbd>Ctrl+Alt+F2</kbd>       Expand selection to next match.
 * <kbd>Ctrl+Alt+Shift+F2</kbd> Expand selection to previous match.
