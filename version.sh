@@ -30,12 +30,12 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
   ver=0
 else
   # Get the current branch name
-  branch=$(git symbolic-ref -q HEAD) && branch=${branch##refs/heads/} || branch="no branch"
+  branch=$(git symbolic-ref -q HEAD) && branch=${branch##refs/heads/} || branch=""
 
   # If we are on another branch that isn't master, we want extra info like on
   # which commit from master it is based on and what its hash is. This assumes we
   # won't ever branch from a changeset from before the move to git
-  if [[ "$branch" != "master" ]]; then
+  if [[ -n "$branch" && "$branch" != "master" ]]; then
     version_info="#define BRANCH _T(\"$branch\")"$'\n'
     if git show-ref --verify --quiet refs/heads/master; then
       # Get where the branch is based on master
