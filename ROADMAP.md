@@ -24,9 +24,10 @@ and the Scintilla 3.7.6 update followed in separate commits.
 Local build modernization is complete: both projects use Visual Studio 2022 /
 `v143`, with a PowerShell build entrypoint and Windows 10/11 as the target baseline.
 Release and Debug builds for x86 and x64 have been verified locally. XP toolset
-support is retired. Next, add GitHub Actions for Win32 and x64 builds and modernize
-the legacy packaging/signing scripts, followed by versioned, downloadable releases
-after runtime validation.
+support is retired. GitHub Actions now builds/tests all four configurations and
+packages portable x86/x64 ZIPs with source metadata and checksums. Version tags
+publish releases after required checks pass; RC tags publish prereleases.
+Legacy installer/signing scripts remain outside the portable release workflow.
 
 ## Easy light/dark switching
 

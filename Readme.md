@@ -113,7 +113,43 @@ Windows 10/11 SDK via `WindowsTargetPlatformVersion=10.0`.
 Release and Debug builds for x86 and x64 have been verified locally with Visual
 Studio 2022 17.14, MSVC 14.44, and Windows SDK 10.0.26100.0. Legacy packaging and
 signing scripts are separate from this build command and have not been validated.
-GitHub Actions and fork releases remain future work.
+GitHub Actions builds and tests Release/Debug x86/x64 on Windows Server 2022.
+Successful runs retain executable artifacts and portable Release ZIPs for 14 days;
+failure logs are uploaded as well. Download published portable builds from
+[Releases](https://github.com/itlezy/notepad2-mod/releases). Initial testing builds
+are marked as prereleases. Binaries are unsigned.
+
+Portable archives contain the executable, a default INI, usage documentation,
+licenses, and source/version metadata. Extract into a writable directory. When
+upgrading an existing installation, preserve its INI and redirected user settings.
+Release setup does not change system-wide Notepad replacement or file associations.
+
+## Publishing a release
+
+Merge validated changes into `master` with granular history preserved, wait for
+master CI to pass, and build that exact clean commit to obtain its file version:
+
+```powershell
+.\build\build.ps1
+$releaseVersion = (Get-Item .\bin\VS2022\Release_x64\Notepad2.exe).VersionInfo.FileVersion.Trim()
+git tag "v$releaseVersion-rc.1"
+git push origin "v$releaseVersion-rc.1"
+```
+
+Stable tags omit `-rc.N`. Tags use the existing four-part file version; full Git
+history determines its final revision component. The workflow checks both binary
+versions against the tag, tests all four configurations, then publishes x86/x64
+ZIPs and SHA256SUMS.txt. A prerelease does not replace the latest stable release.
+
+Only the publishing job has repository write permission, using GITHUB_TOKEN.
+There are no signing secrets or installer dependencies. Published release assets
+must not be overwritten: use a new tag/commit for corrections. If publishing fails
+after creating a draft, inspect its logs and rerun the failed job on the same tag;
+draft assets are replaceable until publication. Never move an existing release tag.
+
+The packaging command is `./build/package.ps1 -Architecture x64` (or `x86`). It
+uses Release output and writes into ignored `bin/packages`; supply a fresh
+`-OutputDirectory` when repackaging an already-created version locally.
 
 To run the native theme integration checks against a built executable:
 
