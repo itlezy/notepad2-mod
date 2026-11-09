@@ -13,11 +13,12 @@ behavior remain inherited from upstream. It does not verify an application build
 
 ## Build modernization and automation
 
-Establish a reproducible baseline, then migrate from the inherited Visual Studio
-2017 / `v141_xp` setup to supported build tooling. Decide and document the Windows
-support baseline as part of that migration rather than silently dropping legacy
-support. Add GitHub Actions for Win32 and x64 builds, followed by versioned,
-downloadable releases after build and runtime validation.
+Local build modernization is complete: both projects use Visual Studio 2022 /
+`v143`, with a PowerShell build entrypoint and Windows 10/11 as the target baseline.
+Release and Debug builds for x86 and x64 have been verified locally. XP toolset
+support is retired. Next, add GitHub Actions for Win32 and x64 builds and modernize
+the legacy packaging/signing scripts, followed by versioned, downloadable releases
+after runtime validation.
 
 ## Easy light/dark switching
 

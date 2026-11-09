@@ -10,7 +10,7 @@ The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/not
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
 
-The initial fork setup changes documentation only. Easy light/dark switching and
+This fork now builds with Visual Studio 2022. Easy light/dark switching and
 Notepad++ XML theme imports are planned features, not implemented additions.
 See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
@@ -30,8 +30,9 @@ See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
 * XP (SP3, SP2 might or might not work), Vista, 7, 8, 8.1 and 10 both 32-bit and 64-bit
 
-This is the inherited upstream support list, not a newly verified compatibility
-matrix for this fork.
+This is the historical upstream support list. Current fork builds target Windows
+10/11 using the modern MSVC toolset; XP compatibility is no longer a build goal.
+Compatibility with other Windows versions has not been verified.
 
 ## [Screenshots](https://xhmikosr.github.io/notepad2-mod/screenshots)
 
@@ -62,18 +63,31 @@ matrix for this fork.
 
 ## Building
 
-The inherited build uses Visual Studio 2017 with C++ desktop tools, ATL/MFC, and
-the `v141_xp` platform toolset (including its required SDK components). Open
-`build/Notepad2.sln`, or run this command from the repository root in Command Prompt:
+Install Visual Studio 2022 (or its Build Tools) with Desktop development with C++,
+MSVC v143 x86/x64 tools, C++ ATL/MFC, and a Windows 10/11 SDK. Install Git for
+Windows as well; revision generation uses its Bash and Git executables.
 
-```bat
-build\build_vs2017.bat Build All Release
+From the repository root in PowerShell:
+
+```powershell
+.\build\build.ps1
 ```
 
-This requests Release builds for both Win32 and x64. The wrapper uses `vswhere`
-to locate Visual Studio; the selected installation must contain the required
-legacy toolset. Installing a newer Visual Studio alone does not retarget the projects.
+The default builds Release for both x86 and x64. To build and run only x64:
 
-These instructions describe the checked-in build configuration. No application
-build or runtime validation was performed for the initial documentation setup.
-Build modernization, GitHub Actions, and fork releases are future milestones.
+```powershell
+.\build\build.ps1 -Architecture x64
+.\bin\VS2022\Release_x64\Notepad2.exe
+```
+
+Use `-Configuration Debug` for Debug builds and `-Target Rebuild` or `-Target Clean`
+as needed. Outputs are in `bin/VS2022/Release_x86`, `Release_x64`, `Debug_x86`,
+and `Debug_x64`. No Developer PowerShell session is required: the script finds
+MSBuild using `vswhere`. Alternatively, open `build/Notepad2.sln` in VS 2022 and
+select Release/Debug and Win32/x64. The projects select the latest installed
+Windows 10/11 SDK via `WindowsTargetPlatformVersion=10.0`.
+
+Release and Debug builds for x86 and x64 have been verified locally with Visual
+Studio 2022 17.14, MSVC 14.44, and Windows SDK 10.0.26100.0. Legacy packaging and
+signing scripts are separate from this build command and have not been validated.
+GitHub Actions and fork releases remain future work.

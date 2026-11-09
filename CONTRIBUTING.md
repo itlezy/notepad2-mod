@@ -15,15 +15,15 @@ The original upstream is archived; this fork owns its ongoing maintenance.
 
 ## Validate changes
 
-Follow the inherited build instructions in [Readme.md](Readme.md). For application
+Follow the build instructions in [Readme.md](Readme.md). For application
 changes, build Release for Win32 and x64 and smoke-test the affected behavior.
 Include reproduction steps, validation results, and any unavailable checks in the
 pull request. Add targeted tests when they can meaningfully verify the behavior.
 Documentation-only changes require reviewing links and `git diff --check`, not a
 full application build.
 
-The initial setup has not verified the legacy build. Do not describe build or
-runtime checks as passing unless you actually ran them.
+Use the current VS 2022 / v143 build rather than the inherited XP toolset. Do not
+describe build or runtime checks as passing unless you actually ran them.
 
 ## Remotes and history
 
