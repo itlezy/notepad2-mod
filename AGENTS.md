@@ -11,6 +11,9 @@
 - For runtime changes, assess startup, editing responsiveness, memory, and idle
   work where affected. Compare against the current fork; never assume a patch
   is faster or claim a regression without measurements.
+- Theme scope is the editor only: text, syntax colors, margins, caret, selections,
+  folding and highlights. Application chrome (menus, dialogs, toolbar, status bar,
+  title bar and scrollbars) is out of scope, not a planned follow-up.
 - Finish each logical change with a granular commit after relevant validation.
   Do not ask again whether to commit completed, authorized work. Stage explicit
   paths/hunks and inspect the staged diff. Keep dependency updates, build changes,

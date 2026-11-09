@@ -18,6 +18,7 @@ happens here; upstream history, licensing, and contributor credits are preserved
 
 This fork now builds with Visual Studio 2022. Native Light/Dark editor themes
 are planned features, not implemented additions.
+Theme work covers the editor only; application chrome is out of scope.
 See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
 The bundled editor engine is Scintilla 3.7.6 (LongTerm3), with the original

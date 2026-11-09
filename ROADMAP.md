@@ -41,9 +41,10 @@ and configuration. Keep theme switching outside the per-character editing path
 and avoid new background work or dependencies. Measure any affected startup,
 editing, memory, or idle behavior against the current fork.
 
-Whole-application dark mode is deferred. Any later work on menus, dialogs,
-toolbar, status bar, title bar, or scrollbars must remain a small, justified patch.
-Editor palettes alone do not theme those surfaces.
+Only the editor is in scope: text and syntax colors, margins, caret, selections,
+folding, bookmarks, and occurrence highlights. Application chrome (menus, dialogs,
+toolbar, status bar, title bar, and scrollbars) is out of scope, not a planned
+follow-up. Completing editor themes completes this appearance milestone.
 
 The five fork candidates below did not show a dark-mode implementation in the
 checked default-branch application paths. This is source inspection, not an
