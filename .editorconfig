@@ -16,6 +16,18 @@ trim_trailing_whitespace = true
 [*.ps1]
 indent_size = 4
 
+[*.py]
+charset = utf-8
+indent_size = 4
+end_of_line = lf
+
+[tests/**]
+charset = utf-8
+indent_style = space
+indent_size = 4
+end_of_line = lf
+trim_trailing_whitespace = true
+
 [*.{vcxproj,filters,props}]
 charset = utf-8
 

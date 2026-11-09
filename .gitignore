@@ -26,3 +26,6 @@
 *.p12
 /.env
 /.env.*
+/.venv/
+/.pytest_cache/
+**/__pycache__/

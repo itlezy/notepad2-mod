@@ -12,6 +12,9 @@ minimal, focused patches with a clear benefit. This fork will not move to
 Notepad3/Notepad4 or adopt their feature stacks; matching newer editors or
 dependency versions is not a goal.
 
+The interface remains single-document. Multi-tab editing and Notepad++ parity
+are out of scope; isolated fixes from other editors may be evaluated surgically.
+
 The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/notepad2-mod),
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
@@ -79,6 +82,12 @@ Compatibility with other Windows versions has not been verified.
 * [Code folding usage guide](https://github.com/XhmikosR/notepad2-mod/wiki/Code-Folding-Usage)
 
 ## Changed keyboard shortcuts compared to Notepad2:
+
+With no selection, **Ctrl+C / Ctrl+Insert** copy the current line and
+**Ctrl+X / Shift+Delete** cut it. These line operations include a line-ending and
+use Scintilla's existing line-clipboard marker: **Ctrl+V / Shift+Insert** insert
+the line above the caret's current line. With a selection, normal copy/cut/paste
+behavior is retained. Cutting is undoable and respects read-only documents.
 
 * <kbd>Ctrl+Alt+F2</kbd>       Expand selection to next match.
 * <kbd>Ctrl+Alt+Shift+F2</kbd> Expand selection to previous match.
@@ -151,16 +160,24 @@ The packaging command is `./build/package.ps1 -Architecture x64` (or `x86`). It
 uses Release output and writes into ignored `bin/packages`; supply a fresh
 `-OutputDirectory` when repackaging an already-created version locally.
 
-To run the native theme integration checks against a built executable:
+Tests use Python 3.13, pytest, and pywinauto's Win32 backend. Test dependencies
+are locked with hashes and are not application dependencies. PowerShell is used
+for building, not UI automation. To test a built executable:
 
 ```powershell
-.\build\test-themes.ps1
-.\build\test-themes.ps1 -Executable .\bin\VS2022\Release_x86\Notepad2.exe
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r tests/requirements.txt
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest --executable .\bin\VS2022\Release_x86\Notepad2.exe --architecture x86
 ```
 
 The checks launch isolated instances with temporary settings, exercise all 38
 schemes and customization Preview/Cancel/Reset, and verify palette/font separation,
 switching, restart persistence, invalid defaults, and disabled settings saving.
-Use `-BaselineExecutable <path>` for a seven-run small-file startup/private-memory/
-numeric edit/idle comparison. These checks do not replace visual contrast review
-or establish large-file performance.
+They also exercise save prompts with embedded NUL/whitespace, exact-byte Cancel
+preservation, production MRU functions, source charset, and startup show-state
+contracts. The latter do not replace an interactive standard-user UAC test.
+Use `--configuration Debug` for the corresponding native helper runtime. A
+pre-fix binary can be checked with `-m pytest tests/test_save_prompts.py
+--legacy-save-behavior --executable <path>` to reproduce the nine loss paths.
+These tests do not replace visual review or establish large-file performance.

@@ -14,6 +14,12 @@
 - Theme scope is the editor only: text, syntax colors, margins, caret, selections,
   folding and highlights. Application chrome (menus, dialogs, toolbar, status bar,
   title bar and scrollbars) is out of scope, not a planned follow-up.
+- Keep the single-document interface. Multi-tab editing and Notepad++ parity or
+  compatibility are not product goals. Standalone patches from Notepad3/Notepad4
+  may be evaluated surgically; their frameworks and feature stacks remain excluded.
+- Use pytest and pywinauto's Win32 backend for native UI regression tests, with
+  only a small adapter for Scintilla messages. Keep test dependencies separate
+  from the application. PowerShell remains appropriate for build/release scripts.
 - Finish each logical change with a granular commit after relevant validation.
   Do not ask again whether to commit completed, authorized work. Stage explicit
   paths/hunks and inspect the staged diff. Keep dependency updates, build changes,

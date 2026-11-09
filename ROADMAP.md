@@ -66,14 +66,30 @@ demonstrates a concrete benefit.
 
 ## Fork review backlog
 
-GitHub issues hold the review notes, source commit links, acceptance criteria,
-and eventual decisions. These are candidates for selective changes, not approved
-imports; none was built or runtime-tested during the initial review.
+Three independent agent reviews and a maintainer cross-check selected four
+surgical corrections, now implemented locally in separate commits. The unsaved
+buffer defect was reproduced against the pre-fix binary. Native regression tests
+cover prompting/cancellation, production MRU functions, source charset and startup
+show-state selection; actual standard-user UAC interaction remains a manual check.
+The fork review introduced no dependency upgrade or subsystem. A separately
+requested improvement adds selection-aware line copy/cut using existing Scintilla
+actions and clipboard markers. UI regression tests use pytest and pywinauto.
 
-| Issue | Candidate | Review focus |
+| Priority | Accepted correction | Source |
 | --- | --- | --- |
-| [#1](https://github.com/itlezy/notepad2-mod/issues/1) | antiufo | Recovery/autosave; preserve upstream fixes and recovery buffer-fix chain. |
-| [#2](https://github.com/itlezy/notepad2-mod/issues/2) | johnwait | Selective editor fixes; exclude wholesale regex/Scintilla migration. |
-| [#3](https://github.com/itlezy/notepad2-mod/issues/3) | mercury233 | Small find/replace, reload, and context-menu improvements. |
-| [#4](https://github.com/itlezy/notepad2-mod/issues/4) | tnotstar | Initial CMake build; Debug support was explicitly unfinished. |
-| [#5](https://github.com/itlezy/notepad2-mod/issues/5) | waskosky | Aggressive reload/append merging; require data-preservation review. |
+| First | [#9: save prompting for nonempty untitled documents](https://github.com/itlezy/notepad2-mod/issues/9) | johnwait; remove C-string content sniffing that misclassifies leading NUL and whitespace. |
+| Next | [#10: skip empty MRU slots](https://github.com/itlezy/notepad2-mod/issues/10) | antiufo; one null guard before path comparison, without recovery features. |
+| Next | [#11: explicit UTF-8 source charset](https://github.com/itlezy/notepad2-mod/issues/11) | mercury233; all four app configurations, unchanged execution charset/resources/vendor code. |
+| Lower | [#12: elevated-window show-state flags](https://github.com/itlezy/notepad2-mod/issues/12) | johnwait; default to visible only when no explicit show-state flag was supplied. |
+
+Closed review decisions remain in [#1](https://github.com/itlezy/notepad2-mod/issues/1),
+[#2](https://github.com/itlezy/notepad2-mod/issues/2), and
+[#3](https://github.com/itlezy/notepad2-mod/issues/3). Recovery/autosave, regex-engine
+replacement, Scintilla migration, broad refactors, notification redesign, and
+optional context-menu/focus/shortcut changes are excluded. Several apparent fixes
+repair code introduced by those forks and do not apply here.
+
+[CMake (#4)](https://github.com/itlezy/notepad2-mod/issues/4) and
+[aggressive reload/append merging (#5)](https://github.com/itlezy/notepad2-mod/issues/5)
+are rejected and closed as not planned. Keep the existing build and file-watching
+models; revisit only if a concrete product need changes that decision.

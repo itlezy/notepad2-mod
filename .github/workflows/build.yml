@@ -32,14 +32,16 @@ jobs:
           New-Item -ItemType Directory -Path bin -Force | Out-Null
           ./build/build.ps1 -Architecture '${{ matrix.architecture }}' -Configuration '${{ matrix.configuration }}' *> bin/build.log
           if ($LASTEXITCODE -ne 0) { Get-Content bin/build.log -Tail 80; exit 1 }
-      - name: Test editor themes
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.architecture }}
+      - name: Install locked test dependencies
+        run: python -m pip install --require-hashes -r tests/requirements.txt
+      - name: Test native editor
         run: |
-          try {
-            ./build/test-themes.ps1 -Executable './bin/VS2022/${{ matrix.configuration }}_${{ matrix.architecture }}/Notepad2.exe' *> bin/tests.log
-          } catch {
-            Get-Content bin/tests.log -Tail 80
-            throw
-          }
+          python -m pytest --executable './bin/VS2022/${{ matrix.configuration }}_${{ matrix.architecture }}/Notepad2.exe' --architecture '${{ matrix.architecture }}' --configuration '${{ matrix.configuration }}' --junitxml bin/test-results.xml *> bin/tests.log
+          if ($LASTEXITCODE -ne 0) { Get-Content bin/tests.log -Tail 100; exit 1 }
           Get-Content bin/tests.log
       - name: Package portable release
         if: matrix.configuration == 'Release'
@@ -64,7 +66,9 @@ jobs:
         if: always()
         with:
           name: logs-${{ matrix.configuration }}-${{ matrix.architecture }}
-          path: bin/*.log
+          path: |
+            bin/*.log
+            bin/test-results.xml
           retention-days: 14
   release:
     name: Publish release
