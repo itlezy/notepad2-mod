@@ -41,3 +41,32 @@ with attribution and license checks.
 
 See [ROADMAP.md](ROADMAP.md) for planned work; listing a feature there does not
 mean it is implemented or validated.
+
+## Git and editor policy
+
+Run `./build/setup-git.ps1` once per clone to install repository-local settings
+and the tracked pre-commit hook. This does not change global settings or author
+identity. Check `git config --local user.name` and `git config --local user.email`
+before committing; configure your own identity locally if needed.
+
+Commits must each cover one logical change, with matching documentation and
+relevant validation. Separate dependency upgrades, build work, policy, formatting,
+and features. Stage explicit paths or hunks and inspect `git diff --cached`.
+Run `./build/check-staged.ps1` before each commit; the hook also runs it. This
+checks staged whitespace and rejects known generated/private file types, including
+force-added ignored files. It does not replace review or detect every secret.
+Commit completed work without accumulating unrelated changes. Use short subjects
+such as `fix(scintilla): ...`, `build: ...`, or `chore: ...`.
+
+Pulls are fast-forward-only, pushes use `simple`, and fetch prunes stale remote
+tracking branches. Never rewrite published history or force-push shared branches.
+Local hooks are a convenience, not server-side enforcement; do not bypass them
+to hide failures. Review merges and publishing separately.
+
+Use an editor with EditorConfig support. Application source uses two-space
+indentation; vendored Scintilla retains its tab conventions. Git normalizes declared
+first-party text to LF in the index, with CRLF checkouts for C/C++ and Windows
+build files and LF for docs/scripts. Legacy encodings, UTF-16 resources/INI files,
+and vendor bytes are preserved. Do not run whole-file formatting or blanket
+UTF-8 conversion. Put any deliberate first-party line-ending normalization in
+its own commit; never mix it with behavior changes.

@@ -18,3 +18,11 @@
 /res/Notepad2.exe.manifest
 /signinfo.txt
 /src/VersionRev.h
+/.vs/
+/.vscode/
+/.idea/
+*.log
+*.pfx
+*.p12
+/.env
+/.env.*

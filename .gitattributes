@@ -1,1 +1,40 @@
-*.sh    eol=lf
+# Git stores declared text as LF; checkout endings ignore global defaults.
+* text=auto
+*.c text eol=crlf
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.bat text eol=crlf
+*.sln text eol=crlf
+*.vcxproj text eol=crlf
+*.filters text eol=crlf
+*.props text eol=crlf
+*.md text eol=lf
+*.ps1 text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.githooks/* text eol=lf
+
+# Preserve legacy encodings and UTF-16 BOMs; never normalize these as UTF-8.
+*.rc -text
+*.ini -text
+*.txt -text
+*.ver -text
+*.iss -text
+*.js -text
+*.conf -text
+*.ico binary
+*.bmp binary
+*.cur binary
+*.png binary
+*.exe binary
+*.dll binary
+*.lib binary
+*.pdb binary
+*.zip binary
+
+# Vendor bytes, including line endings, stay upstream-compatible.
+/scintilla/** -text !eol
