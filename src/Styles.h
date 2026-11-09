@@ -59,6 +59,10 @@ typedef struct _editlexer
 
 
 void   Style_Load();
+BOOL   Style_IsDarkTheme(void);
+void   Style_SetTheme(HWND,BOOL);
+COLORREF Style_GetOccurrenceColor(int);
+COLORREF Style_GetBookmarkColor(void);
 void   Style_Save();
 BOOL   Style_Import(HWND);
 BOOL   Style_Export(HWND);

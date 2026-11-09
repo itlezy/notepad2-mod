@@ -2214,6 +2214,8 @@ void MsgInitMenu(HWND hwnd,WPARAM wParam,LPARAM lParam)
   CheckCmd(hmenu,IDM_VIEW_FOLDING,bShowCodeFolding);
 
   CheckCmd(hmenu,IDM_VIEW_USE2NDDEFAULT,Style_GetUse2ndDefault(hwndEdit));
+  CheckMenuRadioItem(hmenu,IDM_VIEW_THEME_ORIGINAL,IDM_VIEW_THEME_DARK,
+    Style_IsDarkTheme() ? IDM_VIEW_THEME_DARK : IDM_VIEW_THEME_ORIGINAL,MF_BYCOMMAND);
 
   CheckCmd(hmenu,IDM_VIEW_WORDWRAP,fWordWrap);
   CheckCmd(hmenu,IDM_VIEW_LONGLINEMARKER,bMarkLongLines);
@@ -3678,7 +3680,7 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
             }
             else
             {
-                SendMessage( hwndEdit , SCI_MARKERSETBACK , 0 , 0xff << 8 );
+                SendMessage( hwndEdit , SCI_MARKERSETBACK , 0 , Style_GetBookmarkColor() );
                 SendMessage( hwndEdit , SCI_MARKERSETALPHA , 0 , 20);
                 SendMessage( hwndEdit , SCI_MARKERDEFINE , 0 , SC_MARK_BACKGROUND );
             }
@@ -3803,6 +3805,13 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
       Style_ToggleUse2ndDefault(hwndEdit);
       UpdateStatusbar();
       UpdateLineNumberWidth();
+      break;
+
+    case IDM_VIEW_THEME_ORIGINAL:
+    case IDM_VIEW_THEME_DARK:
+      Style_SetTheme(hwndEdit,LOWORD(wParam) == IDM_VIEW_THEME_DARK);
+      UpdateLineNumberWidth();
+      UpdateStatusbar();
       break;
 
 
@@ -3965,7 +3974,7 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
         }
         else
         {
-            SendMessage( hwndEdit , SCI_MARKERSETBACK , 0 , 0xff << 8 );
+            SendMessage( hwndEdit , SCI_MARKERSETBACK , 0 , Style_GetBookmarkColor() );
             SendMessage( hwndEdit , SCI_MARKERSETALPHA , 0 , 20);
             SendMessage( hwndEdit , SCI_MARKERDEFINE , 0 , SC_MARK_BACKGROUND );
         }

@@ -300,6 +300,8 @@
 #define IDM_EDIT_COMPLETEWORD           40373
 #define IDM_VIEW_SCHEME                 40400
 #define IDM_VIEW_USE2NDDEFAULT          40401
+#define IDM_VIEW_THEME_ORIGINAL         40980
+#define IDM_VIEW_THEME_DARK             40981
 #define IDM_VIEW_SCHEMECONFIG           40402
 #define IDM_VIEW_FONT                   40403
 #define IDM_VIEW_WORDWRAP               40404

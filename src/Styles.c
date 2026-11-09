@@ -2577,6 +2577,183 @@ extern int  iDefaultCodePage;
 extern int  iDefaultCharSet;
 extern BOOL bHiliteCurrentLine;
 
+// Only the active values are exposed to the legacy renderer/dialog. Original
+// owns non-color preferences; each palette owns fore/back/alpha independently.
+typedef struct {
+  WCHAR original[128];
+  WCHAR dark[128];
+} THEME_STYLE;
+static THEME_STYLE *themeStyles;
+static int themeStyleCount;
+static BOOL darkTheme;
+
+static void Theme_Append(LPWSTR out,LPCWSTR token)
+{
+  if (lstrlen(out) + lstrlen(token) + 2 < 128) {
+    if (*out) lstrcat(out,L"; ");
+    lstrcat(out,token);
+  }
+}
+
+static void Theme_Filter(LPCWSTR input,LPWSTR out,BOOL colors)
+{
+  WCHAR copy[128],*token,*end;
+  out[0] = 0;
+  lstrcpyn(copy,input,COUNTOF(copy));
+  token = copy;
+  while (*token) {
+    BOOL color;
+    end = StrChr(token,L';');
+    if (end) *end = 0;
+    TrimString(token);
+    color = StrCmpNI(token,L"fore:",5) == 0 ||
+            StrCmpNI(token,L"back:",5) == 0 ||
+            StrCmpNI(token,L"alpha:",6) == 0;
+    if (color == colors && *token) Theme_Append(out,token);
+    if (!end) break;
+    token = end + 1;
+  }
+}
+
+static BOOL Theme_Compose(LPWSTR out,LPCWSTR preferences,LPCWSTR colors)
+{
+  Theme_Filter(preferences,out,FALSE);
+  if (lstrlen(out) + lstrlen(colors) + 2 >= 128) return FALSE;
+  if (*colors) Theme_Append(out,colors);
+  return TRUE;
+}
+
+static void Theme_Capture(void)
+{
+  int lex,i,n = 0;
+  if (!themeStyles) return;
+  for (lex = 0; lex < NUMLEXERS; ++lex) {
+    for (i = 0; pLexArray[lex]->Styles[i].iStyle != -1; ++i,++n) {
+      WCHAR colors[128],value[128];
+      LPCWSTR active = pLexArray[lex]->Styles[i].szValue;
+      if (darkTheme) {
+        Theme_Filter(active,themeStyles[n].dark,TRUE);
+        Theme_Filter(themeStyles[n].original,colors,TRUE);
+        Theme_Compose(value,active,colors);
+        lstrcpy(themeStyles[n].original,value);
+      } else lstrcpy(themeStyles[n].original,active);
+    }
+  }
+}
+
+static BOOL Theme_Apply(void)
+{
+  int lex,i,n = 0;
+  WCHAR value[128];
+  if (!themeStyles) return FALSE;
+  // Validate every combined value before touching the active palette.
+  if (darkTheme) {
+    for (n = 0; n < themeStyleCount; ++n)
+      if (!Theme_Compose(value,themeStyles[n].original,themeStyles[n].dark)) return FALSE;
+  }
+  n = 0;
+  for (lex = 0; lex < NUMLEXERS; ++lex) {
+    for (i = 0; pLexArray[lex]->Styles[i].iStyle != -1; ++i,++n) {
+      LPWSTR active = pLexArray[lex]->Styles[i].szValue;
+      if (darkTheme) Theme_Compose(active,themeStyles[n].original,themeStyles[n].dark);
+      else lstrcpy(active,themeStyles[n].original);
+    }
+  }
+  return TRUE;
+}
+
+static LPCWSTR Theme_DefaultColor(PEDITSTYLE style,int lex,int index)
+{
+  LPCWSTR name = style->pszName;
+  if (lex == 0) {
+    static LPCWSTR global[] = {
+      L"fore:#D4D4D4; back:#1E1E1E", L"fore:#858585; back:#252526",
+      L"fore:#FFFFFF; back:#515C6A", L"fore:#FFFFFF; back:#A1260D",
+      L"fore:#D4D4D4", L"fore:#505050", L"back:#264F78; alpha:200",
+      L"fore:#707070", L"back:#2A2D2E; alpha:255", L"fore:#FFFFFF",
+      L"fore:#505050; back:#303030", L""
+    };
+    return global[index % 12];
+  }
+  if (index == 0) return L"fore:#D4D4D4; back:#1E1E1E";
+  if (StrStrI(name,L"error") || StrStrI(name,L"unknown")) return L"fore:#F48771";
+  if (StrStrI(name,L"comment")) return L"fore:#85B875";
+  if (StrStrI(name,L"string") || StrStrI(name,L"character")) return L"fore:#D69D85";
+  if (StrStrI(name,L"number") || StrStrI(name,L"value")) return L"fore:#B5CEA8";
+  if (StrStrI(name,L"keyword") || StrStrI(name,L"directive")) return L"fore:#86B9E8";
+  if (StrStrI(name,L"function") || StrStrI(name,L"command")) return L"fore:#DCDCAA";
+  if (StrStrI(name,L"tag") || StrStrI(name,L"type")) return L"fore:#4EC9B0";
+  if (StrStrI(name,L"variable") || StrStrI(name,L"attribute")) return L"fore:#9CDCFE";
+  return L"fore:#D4D4D4";
+}
+
+static void Theme_Load(BOOL selected)
+{
+  int lex,i,n = 0;
+  WCHAR section[128];
+  WCHAR *data = LocalAlloc(LPTR,64*1024);
+  LocalFree(themeStyles);
+  themeStyleCount = 0;
+  for (lex = 0; lex < NUMLEXERS; ++lex)
+    for (i = 0; pLexArray[lex]->Styles[i].iStyle != -1; ++i) ++themeStyleCount;
+  themeStyles = LocalAlloc(LPTR,themeStyleCount*sizeof(THEME_STYLE));
+  darkTheme = FALSE;
+  if (!themeStyles || !data) {
+    LocalFree(themeStyles);
+    themeStyles = NULL;
+    LocalFree(data);
+    return;
+  }
+  for (lex = 0; lex < NUMLEXERS; ++lex) {
+    wsprintf(section,L"Theme.Dark.%s",pLexArray[lex]->pszName);
+    LoadIniSection(section,data,32*1024);
+    for (i = 0; pLexArray[lex]->Styles[i].iStyle != -1; ++i,++n) {
+      WCHAR value[128];
+      PEDITSTYLE style = &pLexArray[lex]->Styles[i];
+      lstrcpy(themeStyles[n].original,style->szValue);
+      IniSectionGetString(data,style->pszName,Theme_DefaultColor(style,lex,i),value,COUNTOF(value));
+      Theme_Filter(value,themeStyles[n].dark,TRUE);
+    }
+  }
+  LocalFree(data);
+  darkTheme = selected;
+  if (!Theme_Apply()) { darkTheme = FALSE; Theme_Apply(); }
+}
+
+BOOL Style_IsDarkTheme(void) { return darkTheme; }
+
+void Style_SetTheme(HWND hwnd,BOOL dark)
+{
+  if (!themeStyles || dark == darkTheme) return;
+  Theme_Capture();
+  darkTheme = dark;
+  if (!Theme_Apply()) {
+    darkTheme = !dark;
+    MessageBox(hwnd,L"A style is too long to combine with theme colors. Shorten it in Customize Schemes and try again.",
+      L"Editor Theme",MB_OK | MB_ICONWARNING);
+    return;
+  }
+  Style_SetLexer(hwnd,pLexCurrent);
+  SendMessage(hwnd,SCI_MARKERSETBACK,0,Style_GetBookmarkColor());
+  // Refresh the existing occurrence indicator without repeating its search.
+  {
+    extern int iMarkOccurrences;
+    SendMessage(hwnd,SCI_INDICSETFORE,1,Style_GetOccurrenceColor(iMarkOccurrences));
+  }
+}
+
+COLORREF Style_GetOccurrenceColor(int index)
+{
+  static const COLORREF dark[] = { RGB(100,160,230),RGB(100,200,140),RGB(230,140,120) };
+  index = max(1,min(index,3));
+  return darkTheme ? dark[index-1] : (0xff << ((index-1) << 3));
+}
+
+COLORREF Style_GetBookmarkColor(void)
+{
+  return darkTheme ? RGB(80,180,140) : RGB(0,255,0);
+}
+
 
 //=============================================================================
 //
@@ -2585,6 +2762,7 @@ extern BOOL bHiliteCurrentLine;
 void Style_Load()
 {
   int i,iLexer;
+  BOOL selectedTheme;
   WCHAR tch[32];
   WCHAR *pIniSection = LocalAlloc(LPTR,sizeof(WCHAR)*32*1024);
   int   cchIniSection = (int)LocalSize(pIniSection)/sizeof(WCHAR);
@@ -2625,6 +2803,7 @@ void Style_Load()
   LoadIniSection(L"Styles",pIniSection,cchIniSection);
   // 2nd default
   bUse2ndDefaultStyle = (IniSectionGetInt(pIniSection,L"Use2ndDefaultStyle",0)) ? 1 : 0;
+  selectedTheme = IniSectionGetInt(pIniSection,L"EditorTheme",0) == 1;
 
   // default scheme
   iDefaultLexer = IniSectionGetInt(pIniSection,L"DefaultScheme",0);
@@ -2656,6 +2835,7 @@ void Style_Load()
     }
   }
   LocalFree(pIniSection);
+  Theme_Load(selectedTheme);
 }
 
 
@@ -2666,6 +2846,7 @@ void Style_Load()
 void Style_Save()
 {
   int i,iLexer;
+  int themeIndex = 0;
   WCHAR tch[32];
   WCHAR *pIniSection = LocalAlloc(LPTR,sizeof(WCHAR)*32*1024);
   int   cchIniSection = (int)LocalSize(pIniSection)/sizeof(WCHAR);
@@ -2683,6 +2864,7 @@ void Style_Save()
 
   // auto select
   IniSectionSetInt(pIniSection,L"Use2ndDefaultStyle",bUse2ndDefaultStyle);
+  IniSectionSetInt(pIniSection,L"EditorTheme",darkTheme);
 
   // default scheme
   IniSectionSetInt(pIniSection,L"DefaultScheme",iDefaultLexer);
@@ -2702,15 +2884,28 @@ void Style_Save()
   }
 
   ZeroMemory(pIniSection,cchIniSection);
+  Theme_Capture();
   for (iLexer = 0; iLexer < NUMLEXERS; iLexer++) {
     IniSectionSetString(pIniSection,L"FileNameExtensions",pLexArray[iLexer]->szExtensions);
     i = 0;
     while (pLexArray[iLexer]->Styles[i].iStyle != -1) {
-      IniSectionSetString(pIniSection,pLexArray[iLexer]->Styles[i].pszName,pLexArray[iLexer]->Styles[i].szValue);
+      IniSectionSetString(pIniSection,pLexArray[iLexer]->Styles[i].pszName,
+        themeStyles ? themeStyles[themeIndex++].original : pLexArray[iLexer]->Styles[i].szValue);
       i++;
     }
     SaveIniSection(pLexArray[iLexer]->pszName,pIniSection);
     ZeroMemory(pIniSection,cchIniSection);
+  }
+  if (themeStyles) {
+    themeIndex = 0;
+    for (iLexer = 0; iLexer < NUMLEXERS; ++iLexer) {
+      WCHAR section[128];
+      wsprintf(section,L"Theme.Dark.%s",pLexArray[iLexer]->pszName);
+      for (i = 0; pLexArray[iLexer]->Styles[i].iStyle != -1; ++i)
+        IniSectionSetString(pIniSection,pLexArray[iLexer]->Styles[i].pszName,themeStyles[themeIndex++].dark);
+      SaveIniSection(section,pIniSection);
+      ZeroMemory(pIniSection,cchIniSection);
+    }
   }
   LocalFree(pIniSection);
 }
