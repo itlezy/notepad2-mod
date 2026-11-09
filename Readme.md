@@ -14,6 +14,10 @@ This fork now builds with Visual Studio 2022. Easy light/dark switching and
 Notepad++ XML theme imports are planned features, not implemented additions.
 See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
+The bundled editor engine is Scintilla 3.7.6 (LongTerm3), with the original
+Notepad2-mod customizations preserved. See its
+[vendor notes](scintilla/README.notepad2-mod.txt) for the source and local changes.
+
 ## Changes compared to the official Notepad2:
 
 * Code folding
