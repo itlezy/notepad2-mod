@@ -38,3 +38,6 @@
 
 # Vendor bytes, including line endings, stay upstream-compatible.
 /scintilla/** -text !eol
+# These build files belong to the fork, rather than the upstream source archive.
+/scintilla/*.vcxproj text eol=crlf
+/scintilla/*.filters text eol=crlf
