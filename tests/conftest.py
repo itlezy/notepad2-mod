@@ -1,19 +1,13 @@
 from contextlib import contextmanager
 from pathlib import Path
+import sys
+
+# OLE clipboard preservation requires STA; select it before importing pywinauto.
+sys.coinit_flags = 2
 
 import pytest
 
 from windows_app import Editor
-
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def pytest_addoption(parser):
-    parser.addoption("--executable", default=str(ROOT / "bin/VS2022/Release_x64/Notepad2.exe"))
-    parser.addoption("--architecture", choices=("x86", "x64"), default="x64")
-    parser.addoption("--configuration", choices=("Release", "Debug"), default="Release")
-    parser.addoption("--legacy-save-behavior", action="store_true")
-
 
 @pytest.fixture
 def legacy_save_behavior(request):
