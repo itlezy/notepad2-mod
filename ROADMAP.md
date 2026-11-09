@@ -67,10 +67,13 @@ demonstrates a concrete benefit.
 ## Fork review backlog
 
 Three independent agent reviews and a maintainer cross-check selected four
-surgical corrections. These are approved implementation candidates, not imported
-code. Reproduce/validate each defect before porting, retain attribution, and use
-one focused commit per fix. No dependency upgrade, new subsystem, shortcut change,
-or cosmetic feature is included. No fork was built or runtime-tested in this review.
+surgical corrections, now implemented locally in separate commits. The unsaved
+buffer defect was reproduced against the pre-fix binary. Native regression tests
+cover prompting/cancellation, production MRU functions, source charset and startup
+show-state selection; actual standard-user UAC interaction remains a manual check.
+The fork review introduced no dependency upgrade or subsystem. A separately
+requested improvement adds selection-aware line copy/cut using existing Scintilla
+actions and clipboard markers. UI regression tests use pytest and pywinauto.
 
 | Priority | Accepted correction | Source |
 | --- | --- | --- |
