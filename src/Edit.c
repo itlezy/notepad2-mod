@@ -5867,7 +5867,7 @@ void EditMarkAll(HWND hwnd, int iMarkOccurrences, BOOL bMarkOccurrencesMatchCase
 
   // set style
   SendMessage(hwnd, SCI_INDICSETALPHA, 1, 100);
-  SendMessage(hwnd, SCI_INDICSETFORE, 1, 0xff << ((iMarkOccurrences - 1) << 3));
+  SendMessage(hwnd, SCI_INDICSETFORE, 1, Style_GetOccurrenceColor(iMarkOccurrences));
   SendMessage(hwnd, SCI_INDICSETSTYLE, 1, INDIC_ROUNDBOX);
 
   iMatchesCount = 0;

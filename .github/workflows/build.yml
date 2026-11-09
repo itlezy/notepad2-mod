@@ -1,0 +1,92 @@
+name: Build and release
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+defaults:
+  run:
+    shell: pwsh
+jobs:
+  build:
+    name: ${{ matrix.configuration }} ${{ matrix.architecture }}
+    runs-on: windows-2022
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Release, Debug]
+        architecture: [x86, x64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build
+        run: |
+          New-Item -ItemType Directory -Path bin -Force | Out-Null
+          ./build/build.ps1 -Architecture '${{ matrix.architecture }}' -Configuration '${{ matrix.configuration }}' *> bin/build.log
+          if ($LASTEXITCODE -ne 0) { Get-Content bin/build.log -Tail 80; exit 1 }
+      - name: Test editor themes
+        run: |
+          try {
+            ./build/test-themes.ps1 -Executable './bin/VS2022/${{ matrix.configuration }}_${{ matrix.architecture }}/Notepad2.exe' *> bin/tests.log
+          } catch {
+            Get-Content bin/tests.log -Tail 80
+            throw
+          }
+          Get-Content bin/tests.log
+      - name: Package portable release
+        if: matrix.configuration == 'Release'
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+        run: ./build/package.ps1 -Architecture '${{ matrix.architecture }}' -Tag $env:RELEASE_TAG
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: success()
+        with:
+          name: executable-${{ matrix.configuration }}-${{ matrix.architecture }}
+          path: bin/VS2022/${{ matrix.configuration }}_${{ matrix.architecture }}/Notepad2.exe
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: success() && matrix.configuration == 'Release'
+        with:
+          name: release-package-${{ matrix.architecture }}
+          path: bin/packages/*.zip
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: logs-${{ matrix.configuration }}-${{ matrix.architecture }}
+          path: bin/*.log
+          retention-days: 14
+  release:
+    name: Publish release
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'itlezy/notepad2-mod'
+    runs-on: windows-2022
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-package-*
+          merge-multiple: true
+          path: bin/packages
+      - name: Verify and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./build/publish-release.ps1 -Tag $env:RELEASE_TAG -PackageDirectory bin/packages

@@ -4,41 +4,76 @@ This fork preserves the original Notepad2-mod editor while adding small, practic
 improvements. The original upstream is archived and was last updated in July 2018;
 ongoing maintenance is the responsibility of this fork.
 
+## Product direction
+
+Stay close to Notepad2-mod and evolve through minimal, focused patches. Preserve
+fast startup, responsive editing, a small footprint, native Windows behavior,
+and simple deployment. Notepad3/Notepad4 are not migration targets or sources for
+adopting whole feature stacks or theme frameworks. Backlog items are candidates,
+not commitments to expand the editor. New dependencies and larger changes need
+a concrete benefit and an assessment of maintenance and performance costs.
+
 ## Initial setup
 
-Establish `itlezy/notepad2-mod`, retain upstream history and attribution, document
-the inherited build, and provide contribution guidance. This milestone changes
-documentation only; application code, configuration formats, branding, and runtime
-behavior remain inherited from upstream. It does not verify an application build.
+The initial documentation-only setup established `itlezy/notepad2-mod`, retained
+upstream history and attribution, and added contribution guidance. Build/tooling
+and the Scintilla 3.7.6 update followed in separate commits.
 
 ## Build modernization and automation
 
-Establish a reproducible baseline, then migrate from the inherited Visual Studio
-2017 / `v141_xp` setup to supported build tooling. Decide and document the Windows
-support baseline as part of that migration rather than silently dropping legacy
-support. Add GitHub Actions for Win32 and x64 builds, followed by versioned,
-downloadable releases after build and runtime validation.
+Local build modernization is complete: both projects use Visual Studio 2022 /
+`v143`, with a PowerShell build entrypoint and Windows 10/11 as the target baseline.
+Release and Debug builds for x86 and x64 have been verified locally. XP toolset
+support is retired. GitHub Actions now builds/tests all four configurations and
+packages portable x86/x64 ZIPs with source metadata and checksums. Version tags
+publish releases after required checks pass; RC tags publish prereleases.
+Legacy installer/signing scripts remain outside the portable release workflow.
 
 ## Easy light/dark switching
 
-Provide an accessible light/dark switch and persist the user's choice. Cover both
-syntax/editor colors and application surfaces, including menus, dialogs, toolbar,
-and status bar where supported by the chosen Windows baseline. Keep selection,
-caret, search highlights, and error states readable in both modes. Validate
-switching, reopening the application, and editing representative file types.
+Track implementation in [#6: native Light/Dark editor themes](https://github.com/itlezy/notepad2-mod/issues/6).
+Original/Dark palettes are implemented on Scintilla 3.7.6 using the existing native
+style model. Original retains legacy settings; Dark has separate color storage
+with shared typography. All 38 schemes, repeated switching, restart persistence,
+disabled settings saving, and customization Preview/Cancel/Reset are covered by
+native integration checks in Release/Debug x86/x64. Visual contrast review remains
+useful across real documents; the checks do not establish large-file performance.
 
-This requires application UI work as well as a syntax palette; changing only the
-editor background does not complete this milestone.
+Theme state is resolved when loading/switching, outside the per-character editing
+path. No dependencies, background work, external theme loading, or vendor changes
+were added. A seven-run x64 small-file comparison during implementation measured
+median startup at 71.8 ms baseline / 73.1 ms Original / 71.7 ms Dark, with about
+236 KiB additional private memory. Numeric edit-loop times were 30.2 / 31.2 / 29.6
+ms per 100 delete/undo pairs; sampled 200 ms idle CPU deltas were zero. These are
+indicative local measurements, not a guarantee of equivalent performance on all files.
 
-## Notepad++ XML theme imports
+Only the editor is in scope: text and syntax colors, margins, caret, selections,
+folding, bookmarks, and occurrence highlights. Application chrome (menus, dialogs,
+toolbar, status bar, title bar, and scrollbars) is out of scope, not a planned
+follow-up. Completing editor themes completes this appearance milestone.
 
-Add explicit import of Notepad++ XML theme files. Start by examining the existing
-style import/export code in `src/Styles.c` and its declarations in `src/Styles.h`.
-Map global editor styles and supported lexer styles into Notepad2-mod's style
-model; report unsupported mappings so users understand partial imports.
+The five fork candidates below did not show a dark-mode implementation in the
+checked default-branch application paths. This is source inspection, not an
+exhaustive audit of historical branches. Notepad3/Notepad4 implementations are
+excluded from the proposed implementation direction; build on this editor's
+existing scheme system instead.
 
-Validate with representative light and dark themes, multiple supported languages,
-unknown lexer/style entries, and malformed XML. Preserve usable existing styles
-when an import cannot be applied. Define the mapping and persistence details
-before implementation; Notepad++ theme compatibility is not available in this
-initial setup.
+The older [Solarized Notepad2 INI scheme](https://github.com/achbed/notepad2-colors-solarized)
+is a palette reference only: its documented coverage is Default Text, Web Source
+Code, CSS, and JavaScript. It uses the second-default toggle and does not theme
+the whole application. Notepad++ XML import is out of scope unless a later review
+demonstrates a concrete benefit.
+
+## Fork review backlog
+
+GitHub issues hold the review notes, source commit links, acceptance criteria,
+and eventual decisions. These are candidates for selective changes, not approved
+imports; none was built or runtime-tested during the initial review.
+
+| Issue | Candidate | Review focus |
+| --- | --- | --- |
+| [#1](https://github.com/itlezy/notepad2-mod/issues/1) | antiufo | Recovery/autosave; preserve upstream fixes and recovery buffer-fix chain. |
+| [#2](https://github.com/itlezy/notepad2-mod/issues/2) | johnwait | Selective editor fixes; exclude wholesale regex/Scintilla migration. |
+| [#3](https://github.com/itlezy/notepad2-mod/issues/3) | mercury233 | Small find/replace, reload, and context-menu improvements. |
+| [#4](https://github.com/itlezy/notepad2-mod/issues/4) | tnotstar | Initial CMake build; Debug support was explicitly unfinished. |
+| [#5](https://github.com/itlezy/notepad2-mod/issues/5) | waskosky | Aggressive reload/append merging; require data-preservation review. |

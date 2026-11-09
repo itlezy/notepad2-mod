@@ -6,13 +6,36 @@ This fork is maintained by [itlezy](https://github.com/itlezy) at
 [itlezy/notepad2-mod](https://github.com/itlezy/notepad2-mod), with a focus on small,
 practical improvements to the original editor.
 
+The product direction is to stay close to Notepad2-mod: fast startup, responsive
+editing, a small footprint, and simple native Windows behavior. Changes should be
+minimal, focused patches with a clear benefit. This fork will not move to
+Notepad3/Notepad4 or adopt their feature stacks; matching newer editors or
+dependency versions is not a goal.
+
 The upstream repository, [XhmikosR/notepad2-mod](https://github.com/XhmikosR/notepad2-mod),
 is archived and was last updated in July 2018. Ongoing maintenance for this fork
 happens here; upstream history, licensing, and contributor credits are preserved.
 
-The initial fork setup changes documentation only. Easy light/dark switching and
-Notepad++ XML theme imports are planned features, not implemented additions.
+This fork builds with Visual Studio 2022 and includes native Original/Dark editor
+palettes. Choose **View > Editor Theme > Original / Dark**. Original preserves
+existing custom colors; Dark supplies syntax and editor colors across all 38 schemes.
+Theme work covers the editor only; application chrome is out of scope.
 See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
+
+The bundled editor engine is Scintilla 3.7.6 (LongTerm3), with the original
+Notepad2-mod customizations preserved. See its
+[vendor notes](scintilla/README.notepad2-mod.txt) for the source and local changes.
+
+Customize the active palette using **View > Customize Schemes**. Colors are kept
+separately for Original and Dark; fonts and other non-color preferences remain
+shared. Preview, Cancel, and Reset work with the active palette. The existing
+second-default scheme toggle remains independent. Theme selection follows the
+existing Save Settings preference; explicit Save Settings also saves it.
+
+There are no external theme files or automatic system-theme synchronization.
+Scintilla's native autocomplete list and the existing bookmark pixmap retain
+their original appearance. Scheme import/export remains an explicit full-scheme
+operation, including file associations; it is not used to switch themes.
 
 ## Changes compared to the official Notepad2:
 
@@ -30,8 +53,9 @@ See the [roadmap](ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
 * XP (SP3, SP2 might or might not work), Vista, 7, 8, 8.1 and 10 both 32-bit and 64-bit
 
-This is the inherited upstream support list, not a newly verified compatibility
-matrix for this fork.
+This is the historical upstream support list. Current fork builds target Windows
+10/11 using the modern MSVC toolset; XP compatibility is no longer a build goal.
+Compatibility with other Windows versions has not been verified.
 
 ## [Screenshots](https://xhmikosr.github.io/notepad2-mod/screenshots)
 
@@ -62,18 +86,81 @@ matrix for this fork.
 
 ## Building
 
-The inherited build uses Visual Studio 2017 with C++ desktop tools, ATL/MFC, and
-the `v141_xp` platform toolset (including its required SDK components). Open
-`build/Notepad2.sln`, or run this command from the repository root in Command Prompt:
+Install Visual Studio 2022 (or its Build Tools) with Desktop development with C++,
+MSVC v143 x86/x64 tools, C++ ATL/MFC, and a Windows 10/11 SDK. Install Git for
+Windows as well; revision generation uses its Bash and Git executables.
 
-```bat
-build\build_vs2017.bat Build All Release
+From the repository root in PowerShell:
+
+```powershell
+.\build\build.ps1
 ```
 
-This requests Release builds for both Win32 and x64. The wrapper uses `vswhere`
-to locate Visual Studio; the selected installation must contain the required
-legacy toolset. Installing a newer Visual Studio alone does not retarget the projects.
+The default builds Release for both x86 and x64. To build and run only x64:
 
-These instructions describe the checked-in build configuration. No application
-build or runtime validation was performed for the initial documentation setup.
-Build modernization, GitHub Actions, and fork releases are future milestones.
+```powershell
+.\build\build.ps1 -Architecture x64
+.\bin\VS2022\Release_x64\Notepad2.exe
+```
+
+Use `-Configuration Debug` for Debug builds and `-Target Rebuild` or `-Target Clean`
+as needed. Outputs are in `bin/VS2022/Release_x86`, `Release_x64`, `Debug_x86`,
+and `Debug_x64`. No Developer PowerShell session is required: the script finds
+MSBuild using `vswhere`. Alternatively, open `build/Notepad2.sln` in VS 2022 and
+select Release/Debug and Win32/x64. The projects select the latest installed
+Windows 10/11 SDK via `WindowsTargetPlatformVersion=10.0`.
+
+Release and Debug builds for x86 and x64 have been verified locally with Visual
+Studio 2022 17.14, MSVC 14.44, and Windows SDK 10.0.26100.0. Legacy packaging and
+signing scripts are separate from this build command and have not been validated.
+GitHub Actions builds and tests Release/Debug x86/x64 on Windows Server 2022.
+Successful runs retain executable artifacts and portable Release ZIPs for 14 days;
+failure logs are uploaded as well. Download published portable builds from
+[Releases](https://github.com/itlezy/notepad2-mod/releases). Initial testing builds
+are marked as prereleases. Binaries are unsigned.
+
+Portable archives contain the executable, a default INI, usage documentation,
+licenses, and source/version metadata. Extract into a writable directory. When
+upgrading an existing installation, preserve its INI and redirected user settings.
+Release setup does not change system-wide Notepad replacement or file associations.
+
+## Publishing a release
+
+Merge validated changes into `master` with granular history preserved, wait for
+master CI to pass, and build that exact clean commit to obtain its file version:
+
+```powershell
+.\build\build.ps1
+$releaseVersion = (Get-Item .\bin\VS2022\Release_x64\Notepad2.exe).VersionInfo.FileVersion.Trim()
+git tag "v$releaseVersion-rc.1"
+git push origin "v$releaseVersion-rc.1"
+```
+
+Stable tags omit `-rc.N`. Tags use the existing four-part file version; full Git
+history determines its final revision component. The workflow checks both binary
+versions against the tag, tests all four configurations, then publishes x86/x64
+ZIPs and SHA256SUMS.txt. A prerelease does not replace the latest stable release.
+
+Only the publishing job has repository write permission, using GITHUB_TOKEN.
+There are no signing secrets or installer dependencies. Published release assets
+must not be overwritten: use a new tag/commit for corrections. If publishing fails
+after creating a draft, inspect its logs and rerun the failed job on the same tag;
+draft assets are replaceable until publication. Never move an existing release tag.
+
+The packaging command is `./build/package.ps1 -Architecture x64` (or `x86`). It
+uses Release output and writes into ignored `bin/packages`; supply a fresh
+`-OutputDirectory` when repackaging an already-created version locally.
+
+To run the native theme integration checks against a built executable:
+
+```powershell
+.\build\test-themes.ps1
+.\build\test-themes.ps1 -Executable .\bin\VS2022\Release_x86\Notepad2.exe
+```
+
+The checks launch isolated instances with temporary settings, exercise all 38
+schemes and customization Preview/Cancel/Reset, and verify palette/font separation,
+switching, restart persistence, invalid defaults, and disabled settings saving.
+Use `-BaselineExecutable <path>` for a seven-run small-file startup/private-memory/
+numeric edit/idle comparison. These checks do not replace visual contrast review
+or establish large-file performance.
