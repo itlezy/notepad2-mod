@@ -17,6 +17,8 @@ public static class ThemeTestNative {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, StringBuilder text, int size);
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
+    [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr hwnd, int id);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode, EntryPoint="SendMessageW")] public static extern IntPtr SendText(IntPtr hwnd, uint msg, IntPtr w, string text);
 }
 '@
 
@@ -57,6 +59,29 @@ function Stop-Editor {
     $null = Sci 2014
     $null = [ThemeTestNative]::PostMessage($script:window, 0x10, [IntPtr]::Zero, [IntPtr]::Zero)
     Assert ($script:app.WaitForExit(10000)) 'Editor did not exit normally'
+}
+
+function Open-Customization {
+    $null = [ThemeTestNative]::PostMessage($script:window, 0x111, [IntPtr]40402, [IntPtr]::Zero)
+    $script:dialog = [IntPtr]::Zero
+    $processId = $script:app.Id
+    $callback = [ThemeTestNative+Callback]{ param($handle, $state)
+        [uint32]$owner = 0
+        $null = [ThemeTestNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        $name = New-Object Text.StringBuilder 128
+        $null = [ThemeTestNative]::GetClassName($handle, $name, 128)
+        if ($owner -eq $processId -and $name.ToString() -eq '#32770') { $script:dialog = $handle }
+        return $true
+    }
+    for ($attempt = 0; $attempt -lt 50 -and $script:dialog -eq [IntPtr]::Zero; ++$attempt) {
+        Start-Sleep -Milliseconds 20
+        $null = [ThemeTestNative]::EnumWindows($callback, [IntPtr]::Zero)
+    }
+    Assert ($script:dialog -ne [IntPtr]::Zero) 'Customize Schemes dialog missing'
+    $tree = [ThemeTestNative]::GetDlgItem($script:dialog, 100)
+    $root = [ThemeTestNative]::SendMessage($tree, 0x110A, [IntPtr]::Zero, [IntPtr]::Zero)
+    $first = [ThemeTestNative]::SendMessage($tree, 0x110A, [IntPtr]4, $root)
+    $null = [ThemeTestNative]::SendMessage($tree, 0x110B, [IntPtr]9, $first)
 }
 
 $Executable = (Resolve-Path $Executable).Path
@@ -132,6 +157,33 @@ try {
         Select-Theme $false
         Stop-Editor
     }
+    [IO.File]::WriteAllText($ini, $settings, [Text.Encoding]::Unicode)
+    Start-Editor $ini $document
+    Select-Theme $true
+    Open-Customization
+    $field = [ThemeTestNative]::GetDlgItem($script:dialog, 102)
+    $null = [ThemeTestNative]::SendText($field, 0xC, [IntPtr]::Zero, 'font:Consolas; size:15; fore:#EEEEEE; back:#111111')
+    $null = [ThemeTestNative]::SendMessage($script:dialog, 0x111, [IntPtr]106, [IntPtr]::Zero)
+    Assert ((Sci 2482 32) -eq 0x111111) 'Customization preview did not apply'
+    $null = [ThemeTestNative]::SendMessage($script:dialog, 0x111, [IntPtr]107, [IntPtr]::Zero)
+    $null = [ThemeTestNative]::SendMessage($script:dialog, 0x111, [IntPtr]106, [IntPtr]::Zero)
+    Assert ((Sci 2482 32) -eq 0x1E1E1E) 'Reset restored light colors in Dark'
+    $null = [ThemeTestNative]::SendMessage($script:dialog, 0x111, [IntPtr]2, [IntPtr]::Zero)
+    Assert ((Sci 2482 32) -eq 0x1E1E1E -and (Sci 2485 32) -eq $fontSize) 'Cancel did not restore preview'
+    Open-Customization
+    $field = [ThemeTestNative]::GetDlgItem($script:dialog, 102)
+    $null = [ThemeTestNative]::SendText($field, 0xC, [IntPtr]::Zero, 'font:Consolas; size:15; fore:#EEEEEE; back:#111111')
+    $null = [ThemeTestNative]::SendMessage($script:dialog, 0x111, [IntPtr]1, [IntPtr]::Zero)
+    Select-Theme $false
+    Assert ((Sci 2485 32) -eq 15 -and (Sci 2482 32) -eq $original) 'Customization did not share typography and isolate colors'
+    Select-Theme $true
+    $null = [ThemeTestNative]::SendMessage($script:window, 0x111, [IntPtr]40401, [IntPtr]::Zero)
+    Assert ((Sci 2482 32) -eq 0x1E1E1E) 'Second default was not themed'
+    $null = [ThemeTestNative]::SendMessage($script:window, 0x111, [IntPtr]40401, [IntPtr]::Zero)
+    Stop-Editor
+    Start-Editor $ini $document
+    Assert ((Sci 2482 32) -eq 0x111111 -and (Sci 2485 32) -eq 15) 'Customized theme did not persist'
+    Stop-Editor
     Write-Output "Theme integration passed. 40 switches: $($timer.ElapsedMilliseconds) ms. Fixtures: $testDir"
     if ($BaselineExecutable) {
         $currentExecutable = $Executable

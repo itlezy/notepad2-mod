@@ -4911,6 +4911,14 @@ INT_PTR CALLBACK Style_ConfigDlgProc(HWND hwnd,UINT umsg,WPARAM wParam,LPARAM lP
           if (pCurrentStyle)
           {
             lstrcpy(pCurrentStyle->szValue,pCurrentStyle->pszDefault);
+            if (darkTheme) {
+              int lex,i;
+              for (lex = 0; lex < NUMLEXERS; ++lex)
+                for (i = 0; pLexArray[lex]->Styles[i].iStyle != -1; ++i)
+                  if (&pLexArray[lex]->Styles[i] == pCurrentStyle)
+                    Theme_Compose(pCurrentStyle->szValue,pCurrentStyle->pszDefault,
+                      Theme_DefaultColor(pCurrentStyle,lex,i));
+            }
             SetDlgItemText(hwnd,IDC_STYLEEDIT,pCurrentStyle->szValue);
             //CheckDlgButton(hwnd,IDC_STYLEBOLD,(Style_StrGetAttribute(pCurrentStyle->szValue,L"bold") ? BST_CHECKED : BST_UNCHECKED));
             //CheckDlgButton(hwnd,IDC_STYLEITALIC,(Style_StrGetAttribute(pCurrentStyle->szValue,L"italic") ? BST_CHECKED : BST_UNCHECKED));
