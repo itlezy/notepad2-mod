@@ -222,4 +222,6 @@ int  FileVars_GetEncoding(LPFILEVARS);
 
 
 
+BOOL EditSaveConflict(HWND,LPWSTR,int *,int *,BOOL *,BOOL,int);
+
 ///   End of Edit.h   \\\

@@ -7079,12 +7079,17 @@ BOOL FileSave(BOOL bSaveAlways,BOOL bAsk,BOOL bSaveAs,BOOL bSaveCopy)
     else
       lstrcpy(tchFile,szCurFile);
 
-    if (SaveFileDlg(hwndMain,tchFile,COUNTOF(tchFile),tchInitialDir))
+    int saveAction = IDOK;
+    if (SaveFileDlg(hwndMain,tchFile,COUNTOF(tchFile),tchInitialDir,&saveAction))
     {
-      if (fSuccess = FileIO(FALSE,tchFile,FALSE,&iEncoding,&iEOLMode,NULL,NULL,&bCancelDataLoss,bSaveCopy))
+      if (fSuccess = (saveAction == IDOK
+          ? FileIO(FALSE,tchFile,FALSE,&iEncoding,&iEOLMode,NULL,NULL,&bCancelDataLoss,bSaveCopy)
+          : EditSaveConflict(hwndEdit,tchFile,&iEncoding,&iEOLMode,&bCancelDataLoss,bSaveCopy,saveAction)))
       {
         if (!bSaveCopy)
         {
+          DWORD attributes = GetFileAttributes(tchFile);
+          bReadOnly = attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY);
           lstrcpy(szCurFile,tchFile);
           SetDlgItemText(hwndMain,IDC_FILENAME,szCurFile);
           SetDlgItemInt(hwndMain,IDC_REUSELOCK,GetTickCount(),FALSE);
@@ -7129,7 +7134,7 @@ BOOL FileSave(BOOL bSaveAlways,BOOL bAsk,BOOL bSaveAs,BOOL bSaveCopy)
 
   else if (!bCancelDataLoss)
   {
-    if (lstrlen(szCurFile) != 0)
+    if (!bSaveAs && !bSaveCopy && lstrlen(szCurFile) != 0)
       lstrcpy(tchFile,szCurFile);
 
     SetWindowTitle(hwndMain,uidsAppTitle,fIsElevated,IDS_UNTITLED,szCurFile,
@@ -7204,7 +7209,25 @@ BOOL OpenFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir)
 //  SaveFileDlg()
 //
 //
-BOOL SaveFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir)
+static INT_PTR CALLBACK SaveConflictDlgProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
+{
+  if (msg == WM_INITDIALOG) {
+    SetDlgItemText(hwnd,IDC_SAVE_PATH,(LPCWSTR)lp);
+    CenterDlgInParent(hwnd);
+    return TRUE;
+  }
+  if (msg == WM_COMMAND) {
+    int id = LOWORD(wp);
+    if (id == IDOK || id == IDCANCEL || id == IDC_SAVE_APPEND ||
+        id == IDC_SAVE_PREPEND || id == IDC_SAVE_RENAME) {
+      EndDialog(hwnd,id);
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+BOOL SaveFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir,int *action)
 {
   OPENFILENAME ofn;
   WCHAR szNewFile[MAX_PATH];
@@ -7241,11 +7264,18 @@ BOOL SaveFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir)
   ofn.lpstrInitialDir = tchInitialDir;
   ofn.nMaxFile = MAX_PATH;
   ofn.Flags = OFN_HIDEREADONLY /*| OFN_NOCHANGEDIR*/ |
-            /*OFN_NODEREFERENCELINKS |*/ OFN_OVERWRITEPROMPT |
+            /*OFN_NODEREFERENCELINKS |*/
             OFN_DONTADDTORECENT | OFN_PATHMUSTEXIST;
   ofn.lpstrDefExt = (lstrlen(tchDefaultExtension)) ? tchDefaultExtension : NULL;
 
   if (GetSaveFileName(&ofn)) {
+    *action = IDOK;
+    if (GetFileAttributes(szNewFile) != INVALID_FILE_ATTRIBUTES) {
+      *action = (int)ThemedDialogBoxParam(g_hInstance,MAKEINTRESOURCE(IDD_SAVE_CONFLICT),
+        hwnd,SaveConflictDlgProc,(LPARAM)szNewFile);
+      if (*action == IDCANCEL || *action == -1)
+        return FALSE;
+    }
     lstrcpyn(lpstrFile,szNewFile,cchFile);
     return TRUE;
   }

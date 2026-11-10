@@ -40,6 +40,16 @@ Scintilla's native autocomplete list and the existing bookmark pixmap retain
 their original appearance. Scheme import/export remains an explicit full-scheme
 operation, including file associations; it is not used to switch themes.
 
+When **Save As**, **Save Copy**, or an untitled document's first save targets an
+existing file, choose **Overwrite**, **Cancel**, **Append content**, **Prepend
+content**, or **Auto-rename**. Normal Save keeps its existing behavior.
+Append/prepend preserve the destination's detected encoding and BOM, and insert
+a newline at the join only when neither side supplies one, using the destination's
+line-ending style (or the editor's setting if it has none). Save As displays the
+combined saved file; Save Copy leaves the original document open. Auto-rename
+adds three lowercase letters before the extension, for example `report_abc.txt`,
+and finds an unused name without replacing another file.
+
 ## Changes compared to the official Notepad2:
 
 * Code folding

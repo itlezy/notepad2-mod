@@ -428,6 +428,12 @@
 #define IDS_EXPORT_FAIL                 50040
 #define IDS_CMDLINEHELP                 60000
 
+#define IDD_SAVE_CONFLICT               299
+#define IDC_SAVE_PATH                   2900
+#define IDC_SAVE_APPEND                 2901
+#define IDC_SAVE_PREPEND                2902
+#define IDC_SAVE_RENAME                 2903
+
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
