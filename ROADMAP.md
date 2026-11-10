@@ -137,6 +137,8 @@ bounded candidate review, not an exhaustive audit or a claim about their speed.
 | First | [#17: file-size/allocation bounds](https://github.com/itlezy/notepad2-mod/issues/17) | Adapt the explicit rejection/checking approach from Notepad4; retain our conservative limits, not its larger-file feature set. |
 | Next | [#18: incomplete-save error handling](https://github.com/itlezy/notepad2-mod/issues/18) | Verify truncation, BOM/body write results and byte counts before marking a document saved. Notepad3 is a reference, not a helper to copy blindly. |
 | Next | [#19: UTF-8 buffers and ANSI string walkers](https://github.com/itlezy/notepad2-mod/issues/19) | Assess small, code-page-independent ASCII delimiter/trim operations, following Notepad3's approach. Prove the actual buffer encoding at each call site. |
+| Later | [#20: existing lexer keyword lists](https://github.com/itlezy/notepad2-mod/issues/20) | Low-priority, small syntax-list updates supported by current lexers; no API databases or new engines. |
+| Deferred | [#21: minimal atomic saving](https://github.com/itlezy/notepad2-mod/issues/21) | Design investigation only, after #18; establish metadata, links, failure and replacement semantics before considering implementation. |
 
 These are investigation candidates, not implemented fixes. Reproduce the defect
 and validate the narrow adaptation before shipping. No new runtime dependency,
@@ -147,12 +149,12 @@ approach described by Notepad3. Its recent huge-selection Find-dialog fix is not
 a direct port: our initialization already caps copied selections at 500 bytes.
 Notepad4's recent multithreaded wrapping race fix concerns code we do not have.
 
-Small keyword-list updates for existing lexers are a possible later improvement
+Small keyword-list updates for existing lexers are tracked in #20 as a later improvement
 (for example, Python's missing `async`/`await`); do not import API databases or
 new lexers without a concrete need. C escape/unescape expansion remains optional,
 not a correctness patch to adopt automatically.
 
-Defer Notepad3-style atomic save: replacing files needs a separate review of
+Notepad3-style atomic save is deferred in #21: replacing files needs a review of
 ACLs, alternate streams, links, network/locked files and fallback behavior.
 Recovery/autosave, expression evaluation, encryption, clipboard monitoring,
 search-in-files integration, completion frameworks and application dark chrome
