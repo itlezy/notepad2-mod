@@ -142,12 +142,8 @@ def test_copy_file_and_parent_paths_after_save_as(editor_factory, tmp_path):
     destination = folder / "r\u00e9sum\u00e9 notes.cpp"
 
     with editor_factory(named=True) as e:
-        e.post_command(40005)  # Save As
-        wait_until(10, 0.05, lambda: e.dialog() is not None)
-        dialog = e.dialog()
-        dialog.child_window(class_name="Edit").wrapper_object().set_edit_text(str(destination))
-        dialog.child_window(control_id=1).wrapper_object().click()
-        wait_until(10, 0.05, lambda: e.dialog() is None and destination.exists())
+        e.submit_save_dialog(destination)
+        wait_until(10, 0.05, lambda: destination.exists() and destination.name in e.main.window_text())
         e.sci(2160, 3, 7)  # SCI_SETSEL
         content = e.read_bytes()
 
