@@ -149,26 +149,32 @@ Release setup does not change system-wide Notepad replacement or file associatio
 
 ## Publishing a release
 
-Merge validated changes into `master` with granular history preserved, wait for
-master CI to pass, and build that exact clean commit to obtain its file version:
+Each push to `master`, including a pull request merge, automatically publishes
+an unsigned `v<file-version>-rc.1` prerelease after all four build and test jobs
+pass. GitHub Actions tags the tested commit and publishes the x86 and x64 portable
+ZIPs with `SHA256SUMS.txt`.
+
+To publish a stable release, build the exact clean `master` commit and push its
+four-part file version as a tag:
 
 ```powershell
 .\build\build.ps1
 $releaseVersion = (Get-Item .\bin\VS2022\Release_x64\Notepad2.exe).VersionInfo.FileVersion.Trim()
-git tag "v$releaseVersion-rc.1"
-git push origin "v$releaseVersion-rc.1"
+git tag "v$releaseVersion"
+git push origin "v$releaseVersion"
 ```
 
-Stable tags omit `-rc.N`. Tags use the existing four-part file version; full Git
-history determines its final revision component. The workflow checks both binary
-versions against the tag, tests all four configurations, then publishes x86/x64
-ZIPs and SHA256SUMS.txt. A prerelease does not replace the latest stable release.
+For another prerelease of the same commit, use a tag ending in `-rc.2` or higher.
+Full Git history determines the final revision component. The workflow checks both
+binary versions against the tag and verifies that the tag points to the tested
+commit before publishing.
 
 Only the publishing job has repository write permission, using GITHUB_TOKEN.
 There are no signing secrets or installer dependencies. Published release assets
 must not be overwritten: use a new tag/commit for corrections. If publishing fails
-after creating a draft, inspect its logs and rerun the failed job on the same tag;
-draft assets are replaceable until publication. Never move an existing release tag.
+after creating a draft, inspect its logs and rerun the failed job. The job reuses
+the same tag and can replace draft assets until publication. Never move an existing
+release tag.
 
 The packaging command is `./build/package.ps1 -Architecture x64` (or `x86`). It
 uses Release output and writes into ignored `bin/packages`; supply a fresh

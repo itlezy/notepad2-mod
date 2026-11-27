@@ -7,8 +7,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: build-${{ github.workflow }}-${{ github.ref }}${{ github.ref == 'refs/heads/master' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/tags/') }}
 defaults:
   run:
     shell: pwsh
@@ -47,7 +47,15 @@ jobs:
         if: matrix.configuration == 'Release'
         env:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-        run: ./build/package.ps1 -Architecture '${{ matrix.architecture }}' -Tag $env:RELEASE_TAG
+          AUTO_RELEASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'itlezy/notepad2-mod' }}
+        run: |
+          $architecture = '${{ matrix.architecture }}'
+          $tag = $env:RELEASE_TAG
+          if ($env:AUTO_RELEASE -eq 'true') {
+            $version = (Get-Item "bin/VS2022/Release_$architecture/Notepad2.exe").VersionInfo.FileVersion.Trim()
+            $tag = "v$version-rc.1"
+          }
+          ./build/package.ps1 -Architecture $architecture -Tag $tag
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: success()
         with:
@@ -73,7 +81,7 @@ jobs:
   release:
     name: Publish release
     needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'itlezy/notepad2-mod'
+    if: github.event_name == 'push' && github.repository == 'itlezy/notepad2-mod' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: windows-2022
     timeout-minutes: 10
     permissions:
@@ -92,5 +100,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: ./build/publish-release.ps1 -Tag $env:RELEASE_TAG -PackageDirectory bin/packages
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+        run: |
+          $packages = 'bin/packages'
+          if ($env:RELEASE_TAG) {
+            ./build/publish-release.ps1 -Tag $env:RELEASE_TAG -PackageDirectory $packages
+          } else {
+            $x64 = @(Get-ChildItem $packages -File -Filter '*-x64.zip')
+            if ($x64.Count -ne 1 -or $x64[0].Name -notmatch '^Notepad2-mod-(v\d+\.\d+\.\d+\.\d+-rc\.1)-x64\.zip$') {
+              throw 'Expected one versioned x64 prerelease package.'
+            }
+            ./build/publish-release.ps1 -Tag $Matches[1] -PackageDirectory $packages -CreateTag
+          }
