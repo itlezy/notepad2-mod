@@ -2060,6 +2060,9 @@ void MsgInitMenu(HWND hwnd,WPARAM wParam,LPARAM lParam)
   EnableCmd(hmenu, CMD_RELOADNOFILEVARS, i);
   EnableCmd(hmenu, CMD_RECODEDEFAULT, i);
   EnableCmd(hmenu,IDM_FILE_LAUNCH,i);
+  EnableCmd(hmenu,IDM_FILE_COPYFULLPATH,i);
+  EnableCmd(hmenu,IDM_FILE_COPYPARENTDIR,i);
+  EnableCmd(hmenu,IDM_FILE_OPENCONTAININGDIR,i);
   EnableCmd(hmenu,IDM_FILE_PROPERTIES,i);
   EnableCmd(hmenu,IDM_FILE_CREATELINK,i);
   EnableCmd(hmenu,IDM_FILE_ADDTOFAV,i);
@@ -2628,6 +2631,29 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
       }
       break;
 
+
+    case IDM_FILE_OPENCONTAININGDIR:
+      {
+        PIDLIST_ABSOLUTE pidl;
+        WCHAR directory[COUNTOF(szCurFile)];
+
+        if (!szCurFile[0])
+          break;
+
+        pidl = ILCreateFromPath(szCurFile);
+        if (pidl) {
+          HRESULT result = SHOpenFolderAndSelectItems(pidl,0,NULL,0);
+          ILFree(pidl);
+          if (SUCCEEDED(result))
+            break;
+        }
+
+        lstrcpy(directory,szCurFile);
+        if (!PathRemoveFileSpec(directory) ||
+            (INT_PTR)ShellExecute(hwnd,L"open",directory,NULL,NULL,SW_SHOWNORMAL) <= 32)
+          MsgBox(MBWARN,IDS_ERR_OPENCONTAININGDIR);
+      }
+      break;
 
     case IDM_FILE_PROPERTIES:
       {
@@ -4826,28 +4852,44 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
       break;
 
 
-    case CMD_COPYPATHNAME: {
+    case IDM_FILE_COPYFULLPATH:
+    case IDM_FILE_COPYPARENTDIR:
+    case CMD_COPYPATHNAME:
+      {
+        const WCHAR *pszCopy = szCurFile;
+        WCHAR path[COUNTOF(szCurFile)];
+        HGLOBAL data;
+        WCHAR *text;
 
-        WCHAR *pszCopy;
-        WCHAR tchUntitled[32];
-        if (lstrlen(szCurFile))
-          pszCopy = szCurFile;
-        else {
-          GetString(IDS_UNTITLED,tchUntitled,COUNTOF(tchUntitled));
-          pszCopy = tchUntitled;
+        if (!szCurFile[0]) {
+          if (LOWORD(wParam) != CMD_COPYPATHNAME)
+            break;
+          GetString(IDS_UNTITLED,path,COUNTOF(path));
+          pszCopy = path;
+        }
+        else if (LOWORD(wParam) == IDM_FILE_COPYPARENTDIR) {
+          lstrcpy(path,szCurFile);
+          if (!PathRemoveFileSpec(path))
+            break;
+          pszCopy = path;
         }
 
-        if (OpenClipboard(hwnd)) {
-          HANDLE hData;
-          WCHAR *pData;
-          EmptyClipboard();
-          hData = GlobalAlloc(GMEM_MOVEABLE|GMEM_ZEROINIT,sizeof(WCHAR) * (lstrlen(pszCopy) + 1));
-          pData = GlobalLock(hData);
-          StrCpyN(pData,pszCopy,(int)GlobalSize(hData) / sizeof(WCHAR));
-          GlobalUnlock(hData);
-          SetClipboardData(CF_UNICODETEXT,hData);
-          CloseClipboard();
+        data = GlobalAlloc(GMEM_MOVEABLE,sizeof(WCHAR) * (lstrlen(pszCopy) + 1));
+        if (!data)
+          break;
+
+        text = GlobalLock(data);
+        if (text) {
+          lstrcpy(text,pszCopy);
+          GlobalUnlock(data);
+          if (OpenClipboard(hwnd)) {
+            if (EmptyClipboard() && SetClipboardData(CF_UNICODETEXT,data))
+              data = NULL;
+            CloseClipboard();
+          }
         }
+        if (data)
+          GlobalFree(data);
       }
       break;
 
@@ -7079,12 +7121,17 @@ BOOL FileSave(BOOL bSaveAlways,BOOL bAsk,BOOL bSaveAs,BOOL bSaveCopy)
     else
       lstrcpy(tchFile,szCurFile);
 
-    if (SaveFileDlg(hwndMain,tchFile,COUNTOF(tchFile),tchInitialDir))
+    int saveAction = IDOK;
+    if (SaveFileDlg(hwndMain,tchFile,COUNTOF(tchFile),tchInitialDir,&saveAction))
     {
-      if (fSuccess = FileIO(FALSE,tchFile,FALSE,&iEncoding,&iEOLMode,NULL,NULL,&bCancelDataLoss,bSaveCopy))
+      if (fSuccess = (saveAction == IDOK
+          ? FileIO(FALSE,tchFile,FALSE,&iEncoding,&iEOLMode,NULL,NULL,&bCancelDataLoss,bSaveCopy)
+          : EditSaveConflict(hwndEdit,tchFile,&iEncoding,&iEOLMode,&bCancelDataLoss,bSaveCopy,saveAction)))
       {
         if (!bSaveCopy)
         {
+          DWORD attributes = GetFileAttributes(tchFile);
+          bReadOnly = attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY);
           lstrcpy(szCurFile,tchFile);
           SetDlgItemText(hwndMain,IDC_FILENAME,szCurFile);
           SetDlgItemInt(hwndMain,IDC_REUSELOCK,GetTickCount(),FALSE);
@@ -7129,7 +7176,7 @@ BOOL FileSave(BOOL bSaveAlways,BOOL bAsk,BOOL bSaveAs,BOOL bSaveCopy)
 
   else if (!bCancelDataLoss)
   {
-    if (lstrlen(szCurFile) != 0)
+    if (!bSaveAs && !bSaveCopy && lstrlen(szCurFile) != 0)
       lstrcpy(tchFile,szCurFile);
 
     SetWindowTitle(hwndMain,uidsAppTitle,fIsElevated,IDS_UNTITLED,szCurFile,
@@ -7204,7 +7251,25 @@ BOOL OpenFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir)
 //  SaveFileDlg()
 //
 //
-BOOL SaveFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir)
+static INT_PTR CALLBACK SaveConflictDlgProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
+{
+  if (msg == WM_INITDIALOG) {
+    SetDlgItemText(hwnd,IDC_SAVE_PATH,(LPCWSTR)lp);
+    CenterDlgInParent(hwnd);
+    return TRUE;
+  }
+  if (msg == WM_COMMAND) {
+    int id = LOWORD(wp);
+    if (id == IDOK || id == IDCANCEL || id == IDC_SAVE_APPEND ||
+        id == IDC_SAVE_PREPEND || id == IDC_SAVE_RENAME) {
+      EndDialog(hwnd,id);
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+BOOL SaveFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir,int *action)
 {
   OPENFILENAME ofn;
   WCHAR szNewFile[MAX_PATH];
@@ -7241,11 +7306,18 @@ BOOL SaveFileDlg(HWND hwnd,LPWSTR lpstrFile,int cchFile,LPCWSTR lpstrInitialDir)
   ofn.lpstrInitialDir = tchInitialDir;
   ofn.nMaxFile = MAX_PATH;
   ofn.Flags = OFN_HIDEREADONLY /*| OFN_NOCHANGEDIR*/ |
-            /*OFN_NODEREFERENCELINKS |*/ OFN_OVERWRITEPROMPT |
+            /*OFN_NODEREFERENCELINKS |*/
             OFN_DONTADDTORECENT | OFN_PATHMUSTEXIST;
   ofn.lpstrDefExt = (lstrlen(tchDefaultExtension)) ? tchDefaultExtension : NULL;
 
   if (GetSaveFileName(&ofn)) {
+    *action = IDOK;
+    if (GetFileAttributes(szNewFile) != INVALID_FILE_ATTRIBUTES) {
+      *action = (int)ThemedDialogBoxParam(g_hInstance,MAKEINTRESOURCE(IDD_SAVE_CONFLICT),
+        hwnd,SaveConflictDlgProc,(LPARAM)szNewFile);
+      if (*action == IDCANCEL || *action == -1)
+        return FALSE;
+    }
     lstrcpyn(lpstrFile,szNewFile,cchFile);
     return TRUE;
   }

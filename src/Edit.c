@@ -20,6 +20,8 @@
 #if !defined(_WIN32_WINNT)
 #define _WIN32_WINNT 0x501
 #endif
+#define _CRT_RAND_S
+#include <stdlib.h>
 #include <windows.h>
 #include <shlwapi.h>
 #include <commctrl.h>
@@ -300,7 +302,8 @@ void EditSetNewText(HWND hwnd,char* lpstrText,DWORD cbText)
   SendMessage(hwnd,SCI_SETSCROLLWIDTH,2048,0);
   SendMessage(hwnd,SCI_SETXOFFSET,0,0);
 
-  FileVars_Apply(hwnd,&fvCurFile);
+  if (hwnd == hwndEdit)
+    FileVars_Apply(hwnd,&fvCurFile);
 
   if (cbText > 0)
     SendMessage(hwnd,SCI_ADDTEXT,cbText,(LPARAM)lpstrText);
@@ -1492,11 +1495,13 @@ BOOL EditSaveFile(
   // get text
   cbData = (int)SendMessage(hwnd,SCI_GETLENGTH,0,0);
   lpData = GlobalAlloc(GPTR,cbData + 1);
+  if (!lpData) { CloseHandle(hFile); return FALSE; }
   SendMessage(hwnd,SCI_GETTEXT,GlobalSize(lpData),(LPARAM)lpData);
 
   if (cbData == 0) {
     bWriteSuccess = SetEndOfFile(hFile);
     dwLastIOError = GetLastError();
+    GlobalFree(lpData);
   }
 
   else {
@@ -1533,19 +1538,22 @@ BOOL EditSaveFile(
       SetEndOfFile(hFile);
 
       lpDataWide = GlobalAlloc(GPTR,cbData * 2 + 16);
+      if (!lpDataWide) { GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
       cbDataWide = MultiByteToWideChar(CP_UTF8,0,lpData,cbData,lpDataWide,(int)GlobalSize(lpDataWide)/sizeof(WCHAR));
 
+      if (!cbDataWide) { GlobalFree(lpDataWide); GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
       if (mEncoding[iEncoding].uFlags & NCP_UNICODE_BOM) {
-        if (mEncoding[iEncoding].uFlags & NCP_UNICODE_REVERSE)
-          WriteFile(hFile,(LPCVOID)"\xFE\xFF",2,&dwBytesWritten,NULL);
-        else
-          WriteFile(hFile,(LPCVOID)"\xFF\xFE",2,&dwBytesWritten,NULL);
+        if (mEncoding[iEncoding].uFlags & NCP_UNICODE_REVERSE) {
+          if (!WriteFile(hFile,(LPCVOID)"\xFE\xFF",2,&dwBytesWritten,NULL) || dwBytesWritten != 2) { GlobalFree(lpDataWide); GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
+        } else {
+          if (!WriteFile(hFile,(LPCVOID)"\xFF\xFE",2,&dwBytesWritten,NULL) || dwBytesWritten != 2) { GlobalFree(lpDataWide); GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
+        }
       }
 
       if (mEncoding[iEncoding].uFlags & NCP_UNICODE_REVERSE)
         _swab((char*)lpDataWide,(char*)lpDataWide,cbDataWide * sizeof(WCHAR));
 
-      bWriteSuccess = WriteFile(hFile,lpDataWide,cbDataWide * sizeof(WCHAR),&dwBytesWritten,NULL);
+      bWriteSuccess = WriteFile(hFile,lpDataWide,cbDataWide * sizeof(WCHAR),&dwBytesWritten,NULL) && dwBytesWritten == cbDataWide * sizeof(WCHAR);
       dwLastIOError = GetLastError();
 
       GlobalFree(lpDataWide);
@@ -1557,9 +1565,9 @@ BOOL EditSaveFile(
       SetEndOfFile(hFile);
 
       if (mEncoding[iEncoding].uFlags & NCP_UTF8_SIGN)
-        WriteFile(hFile,(LPCVOID)"\xEF\xBB\xBF",3,&dwBytesWritten,NULL);
+        if (!WriteFile(hFile,(LPCVOID)"\xEF\xBB\xBF",3,&dwBytesWritten,NULL) || dwBytesWritten != 3) { GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
 
-      bWriteSuccess = WriteFile(hFile,lpData,cbData,&dwBytesWritten,NULL);
+      bWriteSuccess = WriteFile(hFile,lpData,cbData,&dwBytesWritten,NULL) && dwBytesWritten == cbData;
       dwLastIOError = GetLastError();
 
       GlobalFree(lpData);
@@ -1571,7 +1579,9 @@ BOOL EditSaveFile(
       UINT uCodePage = mEncoding[iEncoding].uCodePage;
 
       LPWSTR lpDataWide = GlobalAlloc(GPTR,cbData * 2 + 16);
-      int    cbDataWide = MultiByteToWideChar(CP_UTF8,0,lpData,cbData,lpDataWide,(int)GlobalSize(lpDataWide)/sizeof(WCHAR));
+      int cbDataWide;
+      if (!lpDataWide) { GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
+      cbDataWide = MultiByteToWideChar(CP_UTF8,0,lpData,cbData,lpDataWide,(int)GlobalSize(lpDataWide)/sizeof(WCHAR));
 
       // Special cases: 42, 50220, 50221, 50222, 50225, 50227, 50229, 54936, 57002-11, 65000, 65001
       if (uCodePage == CP_UTF7 || uCodePage == 54936) {
@@ -1581,6 +1591,7 @@ BOOL EditSaveFile(
       else
         ZeroMemory(lpData,GlobalSize(lpData));
 
+      if (!lpData || !cbDataWide) { GlobalFree(lpDataWide); GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
       if (uCodePage == CP_UTF7 || uCodePage == 54936)
         cbData = WideCharToMultiByte(uCodePage,0,lpDataWide,cbDataWide,lpData,(int)GlobalSize(lpData),NULL,NULL);
       else {
@@ -1591,10 +1602,11 @@ BOOL EditSaveFile(
         }
       }
       GlobalFree(lpDataWide);
+      if (!cbData) { GlobalFree(lpData); CloseHandle(hFile); return FALSE; }
 
       if (!bCancelDataLoss || InfoBox(MBOKCANCEL,L"MsgConv3",IDS_ERR_UNICODE2) == IDOK) {
         SetEndOfFile(hFile);
-        bWriteSuccess = WriteFile(hFile,lpData,cbData,&dwBytesWritten,NULL);
+        bWriteSuccess = WriteFile(hFile,lpData,cbData,&dwBytesWritten,NULL) && dwBytesWritten == cbData;
         dwLastIOError = GetLastError();
       }
       else {
@@ -1607,7 +1619,7 @@ BOOL EditSaveFile(
 
     else {
       SetEndOfFile(hFile);
-      bWriteSuccess = WriteFile(hFile,lpData,cbData,&dwBytesWritten,NULL);
+      bWriteSuccess = WriteFile(hFile,lpData,cbData,&dwBytesWritten,NULL) && dwBytesWritten == cbData;
       dwLastIOError = GetLastError();
       GlobalFree(lpData);
     }
@@ -1628,6 +1640,178 @@ BOOL EditSaveFile(
 
 }
 
+
+
+// Convert an entire Scintilla document without losing embedded NULs.
+static char *ConflictText(HWND hwnd,UINT cp,int *length,BOOL *cancel)
+{
+  int size = (int)SendMessage(hwnd,SCI_GETLENGTH,0,0);
+  UINT source = (UINT)SendMessage(hwnd,SCI_GETCODEPAGE,0,0);
+  char *text = GlobalAlloc(GPTR,(SIZE_T)size + 1);
+  WCHAR *wide = NULL;
+  char *result = NULL;
+  int count, bytes;
+  BOOL loss = FALSE;
+  if (!text) return NULL;
+  SendMessage(hwnd,SCI_GETTEXT,size + 1,(LPARAM)text);
+  if (source == cp || size == 0) { *length = size; return text; }
+  count = MultiByteToWideChar(source,source == CP_UTF8 ? MB_ERR_INVALID_CHARS : 0,text,size,NULL,0);
+  if (!count) goto done;
+  wide = GlobalAlloc(GPTR,((SIZE_T)count + 1) * sizeof(WCHAR));
+  if (!wide || !MultiByteToWideChar(source,source == CP_UTF8 ? MB_ERR_INVALID_CHARS : 0,text,size,wide,count)) goto done;
+  bytes = WideCharToMultiByte(cp,cp == CP_UTF8 ? 0 : WC_NO_BEST_FIT_CHARS,wide,count,NULL,0,NULL,cp == CP_UTF8 ? NULL : &loss);
+  if (!bytes) goto done;
+  result = GlobalAlloc(GPTR,(SIZE_T)bytes + 1);
+  if (!result) goto done;
+  if (!WideCharToMultiByte(cp,cp == CP_UTF8 ? 0 : WC_NO_BEST_FIT_CHARS,wide,count,result,bytes,NULL,cp == CP_UTF8 ? NULL : &loss)) {
+    GlobalFree(result); result = NULL; goto done;
+  }
+  if (loss && InfoBox(MBOKCANCEL,L"MsgConv3",IDS_ERR_UNICODE2) != IDOK) {
+    *cancel = TRUE;
+    GlobalFree(result); result = NULL;
+  }
+  *length = bytes;
+done:
+  GlobalFree(wide);
+  GlobalFree(text);
+  return result;
+}
+
+BOOL EditSaveConflict(HWND hwnd,LPWSTR path,int *encoding,int *eol,
+                      BOOL *cancel,BOOL copy,int action)
+{
+  HWND stage = NULL;
+  HANDLE guard = INVALID_HANDLE_VALUE;
+  BY_HANDLE_FILE_INFORMATION original, current;
+  WCHAR temporary[MAX_PATH] = L"", directory[MAX_PATH], candidate[MAX_PATH];
+  FILEVARS savedVars = fvCurFile;
+  int savedSrc = iSrcEncoding, savedWeak = iWeakSrcEncoding;
+  BOOL savedFreeze = bFreezeAppTitle;
+  BOOL fix = bFixLineEndings, strip = bAutoStripBlanks;
+  BOOL unicodeError = FALSE, tooBig = FALSE, success = FALSE;
+  int enc = *encoding, mode = *eol, length = 0;
+  char *text = NULL;
+  UINT cp;
+  *cancel = FALSE;
+  lstrcpy(directory,path);
+  PathRemoveFileSpec(directory);
+  if (!GetTempFileName(directory,L"np2",0,temporary)) goto done;
+  stage = CreateWindowEx(0,L"Scintilla",L"",WS_CHILD,0,0,0,0,hwndMain,NULL,g_hInstance,NULL);
+  if (!stage) goto done;
+  if (action != IDC_SAVE_RENAME) {
+    // Deny writers while reading and preparing the replacement.
+    guard = CreateFile(path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
+    if (guard == INVALID_HANDLE_VALUE || !GetFileInformationByHandle(guard,&original)) goto done;
+    if (original.nFileSizeHigh || original.nFileSizeLow > INT_MAX - 10) {
+      SetLastError(ERROR_FILE_TOO_LARGE);
+      goto done;
+    }
+    iSrcEncoding = iWeakSrcEncoding = -1;
+    if (!EditLoadFile(stage,path,FALSE,&enc,&mode,&unicodeError,&tooBig) || unicodeError) goto done;
+    cp = (UINT)SendMessage(stage,SCI_GETCODEPAGE,0,0);
+    // No EOL in the destination: use the source document's setting.
+    {
+      int n = 0;
+      char *existing = ConflictText(stage,cp,&n,cancel);
+      if (!existing) goto done;
+      if (!memchr(existing,'\r',n) && !memchr(existing,'\n',n)) mode = *eol;
+      GlobalFree(existing);
+    }
+  }
+  else {
+    cp = (UINT)SendMessage(hwnd,SCI_GETCODEPAGE,0,0);
+    SendMessage(stage,SCI_SETCODEPAGE,cp,0);
+  }
+  text = ConflictText(hwnd,cp,&length,cancel);
+  if (!text) goto done;
+  {
+    int n = (int)SendMessage(stage,SCI_GETLENGTH,0,0);
+    int pos = action == IDC_SAVE_PREPEND ? 0 : n;
+    int left = action == IDC_SAVE_PREPEND ? (length ? (unsigned char)text[length-1] : 0)
+      : (n ? (int)SendMessage(stage,SCI_GETCHARAT,n-1,0) : 0);
+    int right = action == IDC_SAVE_PREPEND ? (n ? (int)SendMessage(stage,SCI_GETCHARAT,0,0) : 0)
+      : (length ? (unsigned char)text[0] : 0);
+    const char *newline = mode == SC_EOL_CRLF ? "\r\n" : mode == SC_EOL_CR ? "\r" : "\n";
+    BOOL boundary = n && length && left != '\r' && left != '\n' && right != '\r' && right != '\n';
+    if ((SIZE_T)n + length + 2 > INT_MAX) goto done;
+    SendMessage(stage,SCI_SETTARGETSTART,pos,0);
+    SendMessage(stage,SCI_SETTARGETEND,pos,0);
+    SendMessage(stage,SCI_REPLACETARGET,length,(LPARAM)text);
+    if (boundary) {
+      pos = action == IDC_SAVE_PREPEND ? length : n;
+      SendMessage(stage,SCI_SETTARGETSTART,pos,0);
+      SendMessage(stage,SCI_SETTARGETEND,pos,0);
+      SendMessage(stage,SCI_REPLACETARGET,strlen(newline),(LPARAM)newline);
+    }
+  }
+  GlobalFree(text); text = NULL;
+  SendMessage(stage,SCI_SETEOLMODE,mode,0);
+  if (SendMessage(stage,SCI_GETSTATUS,0,0) != SC_STATUS_OK) goto done;
+  bFixLineEndings = bAutoStripBlanks = FALSE;
+  if (!EditSaveFile(stage,temporary,enc,cancel,TRUE)) goto done;
+  // Flush and decode the staged bytes before committing, so the editor will
+  // show exactly what was saved even after an accepted lossy conversion.
+  {
+    HANDLE output = CreateFile(temporary,GENERIC_WRITE,0,NULL,OPEN_EXISTING,0,NULL);
+    BOOL flushed;
+    if (output == INVALID_HANDLE_VALUE) goto done;
+    flushed = FlushFileBuffers(output);
+    CloseHandle(output);
+    if (!flushed) goto done;
+  }
+  if (!copy) {
+    int detectedMode;
+    iSrcEncoding = enc == CPI_UNICODEBOM ? CPI_UNICODE : enc == CPI_UNICODEBEBOM ? CPI_UNICODEBE : enc;
+    if (!EditLoadFile(stage,temporary,FALSE,&enc,&detectedMode,&unicodeError,&tooBig) || unicodeError) goto done;
+    cp = (UINT)SendMessage(stage,SCI_GETCODEPAGE,0,0);
+    text = ConflictText(stage,cp,&length,cancel);
+    if (!text) goto done;
+  }
+  if (action == IDC_SAVE_RENAME) {
+    unsigned int random;
+    int attempt;
+    WCHAR *extension = PathFindExtension(path);
+    int stem = (int)(extension - path);
+    if (lstrlen(path) + 4 >= MAX_PATH || rand_s(&random)) goto done;
+    for (attempt = 0; attempt < 26*26*26; ++attempt) {
+      unsigned int value = (random % (26*26*26) + attempt) % (26*26*26);
+      lstrcpyn(candidate,path,stem + 1);
+      wsprintf(candidate + stem,L"_%c%c%c%s",L'a' + value/676,L'a' + value/26%26,L'a' + value%26,extension);
+      if (MoveFile(temporary,candidate)) {
+        lstrcpy(path,candidate); success = TRUE; break;
+      }
+      if (GetLastError() != ERROR_ALREADY_EXISTS && GetLastError() != ERROR_FILE_EXISTS) goto done;
+    }
+  }
+  else {
+    if (!GetFileInformationByHandle(guard,&current) ||
+        memcmp(&original.ftLastWriteTime,&current.ftLastWriteTime,sizeof(FILETIME)) ||
+        original.nFileSizeHigh != current.nFileSizeHigh || original.nFileSizeLow != current.nFileSizeLow) goto done;
+    CloseHandle(guard); guard = INVALID_HANDLE_VALUE;
+    success = ReplaceFile(path,temporary,NULL,0,NULL,NULL);
+  }
+  if (success && !copy) {
+    SendMessage(hwnd,SCI_SETCODEPAGE,cp,0);
+    EditSetNewText(hwnd,text,length);
+    SendMessage(hwnd,SCI_SETEOLMODE,mode,0);
+    *encoding = enc;
+    *eol = mode;
+    savedVars = fvCurFile;
+  }
+done:
+  if (!success && !*cancel) dwLastIOError = GetLastError();
+  bFixLineEndings = fix;
+  bAutoStripBlanks = strip;
+  fvCurFile = savedVars;
+  iSrcEncoding = savedSrc;
+  iWeakSrcEncoding = savedWeak;
+  bFreezeAppTitle = savedFreeze;
+  GlobalFree(text);
+  if (stage) DestroyWindow(stage);
+  if (guard != INVALID_HANDLE_VALUE) CloseHandle(guard);
+  if (temporary[0]) DeleteFile(temporary);
+  return success;
+}
 
 //=============================================================================
 //

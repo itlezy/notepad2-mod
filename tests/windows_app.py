@@ -5,6 +5,13 @@ import subprocess
 from pywinauto import Application
 from pywinauto.remote_memory_block import RemoteMemoryBlock
 from pywinauto.timings import wait_until
+from win32con import IDOK, WM_COMMAND
+
+
+def press_dialog_button(dialog, control_id):
+    button = dialog.child_window(control_id=control_id, class_name="Button").wait("ready", timeout=10)
+    # A button click notifies its parent with WM_COMMAND and BN_CLICKED (zero).
+    button.parent().post_message(WM_COMMAND, control_id, button.handle)
 
 
 class Editor:
@@ -69,6 +76,16 @@ class Editor:
             return None
         windows = self.app.windows(class_name="#32770", visible_only=False)
         return self.app.window(handle=windows[0].handle) if windows else None
+
+    def submit_save_dialog(self, path, command=40005):
+        self.post_command(command)
+        dialog = self.app.window(title="Save As", class_name="#32770")
+        dialog.wait("ready", timeout=10)
+        # The address bar also has an Edit control. Target the file-name field.
+        filename = dialog.child_window(control_id=1001, class_name="Edit").wait("ready", timeout=10)
+        filename.set_edit_text(str(path))
+        assert filename.window_text() == str(path)
+        press_dialog_button(dialog, IDOK)
 
     def is_running(self):
         return self.process.poll() is None

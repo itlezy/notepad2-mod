@@ -204,6 +204,9 @@
 #define IDM_FILE_MANAGEFAV              40019
 #define IDM_FILE_RECENT                 40020
 #define IDM_FILE_EXIT                   40021
+#define IDM_FILE_COPYFULLPATH           40022
+#define IDM_FILE_COPYPARENTDIR          40023
+#define IDM_FILE_OPENCONTAININGDIR      40024
 #define IDM_ENCODING_ANSI               40100
 #define IDM_ENCODING_UNICODE            40101
 #define IDM_ENCODING_UNICODEREV         40102
@@ -426,7 +429,14 @@
 #define IDS_WRITEINI_FAIL               50038
 #define IDS_SETTINGSNOTSAVED            50039
 #define IDS_EXPORT_FAIL                 50040
+#define IDS_ERR_OPENCONTAININGDIR       50041
 #define IDS_CMDLINEHELP                 60000
+
+#define IDD_SAVE_CONFLICT               299
+#define IDC_SAVE_PATH                   2900
+#define IDC_SAVE_APPEND                 2901
+#define IDC_SAVE_PREPEND                2902
+#define IDC_SAVE_RENAME                 2903
 
 // Next default values for new objects
 //

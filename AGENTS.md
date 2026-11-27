@@ -20,6 +20,13 @@
 - Use pytest and pywinauto's Win32 backend for native UI regression tests, with
   only a small adapter for Scintilla messages. Keep test dependencies separate
   from the application. PowerShell remains appropriate for build/release scripts.
+- On this workstation, keep the system-installed Notepad2 executable on our
+  latest validated Release x64 build. Updating it after successful validation is
+  authorized; do not leave installation as a separate optional follow-up. Back up
+  the previous executable, verify the replacement hash, and smoke-test direct
+  launch and Windows Notepad redirection. Preserve user settings and associations.
+  Never terminate an editor holding user work; report a running-instance blocker.
+  Documentation/test-only changes do not require a new application binary.
 - Finish each logical change with a granular commit after relevant validation.
   Do not ask again whether to commit completed, authorized work. Stage explicit
   paths/hunks and inspect the staged diff. Keep dependency updates, build changes,
