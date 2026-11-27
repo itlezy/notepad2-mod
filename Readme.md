@@ -50,6 +50,10 @@ combined saved file; Save Copy leaves the original document open. Auto-rename
 adds three lowercase letters before the extension, for example `report_abc.txt`,
 and finds an unused name without replacing another file.
 
+In the **File** menu, **Copy Full Path** (Shift+F9) copies the current file path,
+**Copy Parent Directory Path** copies its folder path, and **Open Containing
+Directory** opens File Explorer with the current file selected when it exists.
+
 ## Changes compared to the official Notepad2:
 
 * Code folding

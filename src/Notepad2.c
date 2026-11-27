@@ -2060,6 +2060,9 @@ void MsgInitMenu(HWND hwnd,WPARAM wParam,LPARAM lParam)
   EnableCmd(hmenu, CMD_RELOADNOFILEVARS, i);
   EnableCmd(hmenu, CMD_RECODEDEFAULT, i);
   EnableCmd(hmenu,IDM_FILE_LAUNCH,i);
+  EnableCmd(hmenu,IDM_FILE_COPYFULLPATH,i);
+  EnableCmd(hmenu,IDM_FILE_COPYPARENTDIR,i);
+  EnableCmd(hmenu,IDM_FILE_OPENCONTAININGDIR,i);
   EnableCmd(hmenu,IDM_FILE_PROPERTIES,i);
   EnableCmd(hmenu,IDM_FILE_CREATELINK,i);
   EnableCmd(hmenu,IDM_FILE_ADDTOFAV,i);
@@ -2628,6 +2631,29 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
       }
       break;
 
+
+    case IDM_FILE_OPENCONTAININGDIR:
+      {
+        PIDLIST_ABSOLUTE pidl;
+        WCHAR directory[COUNTOF(szCurFile)];
+
+        if (!szCurFile[0])
+          break;
+
+        pidl = ILCreateFromPath(szCurFile);
+        if (pidl) {
+          HRESULT result = SHOpenFolderAndSelectItems(pidl,0,NULL,0);
+          ILFree(pidl);
+          if (SUCCEEDED(result))
+            break;
+        }
+
+        lstrcpy(directory,szCurFile);
+        if (!PathRemoveFileSpec(directory) ||
+            (INT_PTR)ShellExecute(hwnd,L"open",directory,NULL,NULL,SW_SHOWNORMAL) <= 32)
+          MsgBox(MBWARN,IDS_ERR_OPENCONTAININGDIR);
+      }
+      break;
 
     case IDM_FILE_PROPERTIES:
       {
@@ -4826,28 +4852,44 @@ LRESULT MsgCommand(HWND hwnd,WPARAM wParam,LPARAM lParam)
       break;
 
 
-    case CMD_COPYPATHNAME: {
+    case IDM_FILE_COPYFULLPATH:
+    case IDM_FILE_COPYPARENTDIR:
+    case CMD_COPYPATHNAME:
+      {
+        const WCHAR *pszCopy = szCurFile;
+        WCHAR path[COUNTOF(szCurFile)];
+        HGLOBAL data;
+        WCHAR *text;
 
-        WCHAR *pszCopy;
-        WCHAR tchUntitled[32];
-        if (lstrlen(szCurFile))
-          pszCopy = szCurFile;
-        else {
-          GetString(IDS_UNTITLED,tchUntitled,COUNTOF(tchUntitled));
-          pszCopy = tchUntitled;
+        if (!szCurFile[0]) {
+          if (LOWORD(wParam) != CMD_COPYPATHNAME)
+            break;
+          GetString(IDS_UNTITLED,path,COUNTOF(path));
+          pszCopy = path;
+        }
+        else if (LOWORD(wParam) == IDM_FILE_COPYPARENTDIR) {
+          lstrcpy(path,szCurFile);
+          if (!PathRemoveFileSpec(path))
+            break;
+          pszCopy = path;
         }
 
-        if (OpenClipboard(hwnd)) {
-          HANDLE hData;
-          WCHAR *pData;
-          EmptyClipboard();
-          hData = GlobalAlloc(GMEM_MOVEABLE|GMEM_ZEROINIT,sizeof(WCHAR) * (lstrlen(pszCopy) + 1));
-          pData = GlobalLock(hData);
-          StrCpyN(pData,pszCopy,(int)GlobalSize(hData) / sizeof(WCHAR));
-          GlobalUnlock(hData);
-          SetClipboardData(CF_UNICODETEXT,hData);
-          CloseClipboard();
+        data = GlobalAlloc(GMEM_MOVEABLE,sizeof(WCHAR) * (lstrlen(pszCopy) + 1));
+        if (!data)
+          break;
+
+        text = GlobalLock(data);
+        if (text) {
+          lstrcpy(text,pszCopy);
+          GlobalUnlock(data);
+          if (OpenClipboard(hwnd)) {
+            if (EmptyClipboard() && SetClipboardData(CF_UNICODETEXT,data))
+              data = NULL;
+            CloseClipboard();
+          }
         }
+        if (data)
+          GlobalFree(data);
       }
       break;
 

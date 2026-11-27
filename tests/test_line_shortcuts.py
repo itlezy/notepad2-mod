@@ -125,3 +125,42 @@ def test_line_clipboard_pastes_above_current_line(editor_factory, copy_keys, pas
         wait_until(5, 0.05, lambda: e.read_bytes() == expected)
         e.sci(2176)
         assert e.read_bytes() == before_paste
+
+
+def test_file_path_menu_is_disabled_for_untitled_document(editor_factory):
+    with editor_factory() as e:
+        for label in ("Copy Full Path", "Copy Parent Directory Path", "Open Containing Directory"):
+            assert not e.main.menu_item(f"File->{label}").is_enabled()
+
+        e.command(20032)  # Legacy Shift+F9 command
+        assert clipboard_text() == "Untitled"
+
+
+def test_copy_file_and_parent_paths_after_save_as(editor_factory, tmp_path):
+    folder = tmp_path / "caf\u00e9 notes"
+    folder.mkdir()
+    destination = folder / "r\u00e9sum\u00e9 notes.cpp"
+
+    with editor_factory(named=True) as e:
+        e.post_command(40005)  # Save As
+        wait_until(10, 0.05, lambda: e.dialog() is not None)
+        dialog = e.dialog()
+        dialog.child_window(class_name="Edit").wrapper_object().set_edit_text(str(destination))
+        dialog.child_window(control_id=1).wrapper_object().click()
+        wait_until(10, 0.05, lambda: e.dialog() is None and destination.exists())
+        e.sci(2160, 3, 7)  # SCI_SETSEL
+        content = e.read_bytes()
+
+        for label, expected in (
+            ("Copy Full Path", destination),
+            ("Copy Parent Directory Path", folder),
+        ):
+            item = e.main.menu_item(f"File->{label}")
+            assert item.is_enabled()
+            e.command(item.item_id())
+            assert clipboard_text() == str(expected)
+            assert e.read_bytes() == content
+            assert e.sci(2009) == 3  # SCI_GETANCHOR
+            assert e.sci(2008) == 7  # SCI_GETCURRENTPOS
+
+        assert e.main.menu_item("File->Open Containing Directory").is_enabled()
